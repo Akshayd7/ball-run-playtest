@@ -442,8 +442,7 @@ window.gameStopped = function(reason, level, coins) {
 
       gain.gain.setValueAtTime(0.001, now);
       gain.gain.linearRampToValueAtTime(vol, now + 0.012);
-      gain.gain.exponentialRampToValueAt
-Time(0.0008, now + dur);
+      gain.gain.exponentialRampToValueAtTime(0.0008, now + dur);
 
       osc1.connect(gain);
       osc2.connect(gain);
@@ -823,8 +822,7 @@ Time(0.0008, now + dur);
     for (let i = 0; i < segs; i++) {
       idx.push(topCenter, topCenter + i + 2, topCenter + i + 1);
     }
- 
-   return createMesh(p, n, idx);
+    return createMesh(p, n, idx);
   }
 
   const meshCube = buildCubeMesh();
@@ -1196,8 +1194,7 @@ Time(0.0008, now + dur);
 
   const elTitleScreen = document.getElementById("title-screen");
   const elTitleBest = document.getElementById("title-best");
-  cons
-t elHowtoScreen = document.getElementById("howto-screen");
+  const elHowtoScreen = document.getElementById("howto-screen");
   const elGameoverScreen = document.getElementById("gameover-screen");
   const elGameoverSub = document.getElementById("gameover-sub");
   const elVictoryScreen = document.getElementById("victory-screen");
@@ -1586,8 +1583,7 @@ t elHowtoScreen = document.getElementById("howto-screen");
     // 1. Animated Turquoise Lagoon Water Plane
     drawMesh(meshCube, 0, -2.9, ball.z - 45, 0, 0, 0, 180, 0.2, 190, [0.0, 0.68, 0.85], 2);
 
-    // 2. Distant Sandy Islands & Palm T
-rees
+    // 2. Distant Sandy Islands & Palm Trees
     decorations.forEach((dec) => {
       if (dec.z > ball.z + 15 || dec.z < ball.z - 125) return;
       const s = dec.scale;
