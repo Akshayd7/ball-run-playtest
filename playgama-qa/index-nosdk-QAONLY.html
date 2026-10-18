@@ -1,0 +1,2152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>NEON SKY ROLL</title>
+<style>
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    margin: 0;
+    padding: 0;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #060312;
+    font-family: 'Segoe UI', 'Trebuchet MS', Roboto, Helvetica, Arial, sans-serif;
+    touch-action: none;
+  }
+  #game-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+  }
+  .hidden {
+    display: none !important;
+  }
+  /* HUD */
+  #hud {
+    justify-content: flex-start;
+  }
+  .hud-top {
+    width: 100%;
+    max-width: 440px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+    pointer-events: auto;
+  }
+  .pill {
+    background: rgba(12, 8, 28, 0.85);
+    border: 2px solid #00f0ff;
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-weight: 900;
+    font-size: 18px;
+    color: #00f0ff;
+    text-shadow: 0 0 8px rgba(0, 240, 255, 0.7);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.35), inset 0 0 8px rgba(0, 240, 255, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 1px;
+  }
+  .dollar-badge {
+    color: #ffe600;
+    font-weight: 900;
+    font-size: 20px;
+    text-shadow: 0 0 8px #ffaa00;
+  }
+  .progress-wrap {
+    width: 100%;
+    max-width: 300px;
+    height: 12px;
+    background: rgba(10, 6, 24, 0.8);
+    border: 2px solid #ff00a0;
+    border-radius: 999px;
+    margin-top: 14px;
+    overflow: hidden;
+    box-shadow: 0 0 10px rgba(255, 0, 160, 0.45);
+  }
+  #progress-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #00f0ff, #ff00a0, #ffe600);
+    box-shadow: 0 0 10px #00f0ff;
+    transition: width 0.08s linear;
+  }
+  #first-play-hint {
+    margin-top: 36px;
+    background: rgba(10, 6, 26, 0.88);
+    border: 1.5px solid #ffe600;
+    color: #ffe600;
+    text-shadow: 0 0 8px rgba(255, 230, 0, 0.7);
+    box-shadow: 0 0 16px rgba(255, 230, 0, 0.3);
+    padding: 12px 20px;
+    border-radius: 16px;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 0.8px;
+    animation: pulse 1.2s infinite alternate;
+    text-align: center;
+    max-width: 340px;
+  }
+  @keyframes pulse {
+    from { transform: scale(0.97); opacity: 0.8; }
+    to { transform: scale(1.03); opacity: 1; }
+  }
+  /* Panels & Buttons */
+  .overlay-screen {
+    background: rgba(6, 3, 18, 0.65);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    justify-content: center;
+    pointer-events: auto;
+  }
+  .card {
+    background: linear-gradient(180deg, rgba(18, 10, 42, 0.94) 0%, rgba(8, 4, 22, 0.96) 100%);
+    border: 3px solid #00f0ff;
+    border-radius: 24px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 350px;
+    text-align: center;
+    box-shadow: 0 0 28px rgba(0, 240, 255, 0.4), inset 0 0 18px rgba(255, 0, 160, 0.25);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .game-title {
+    font-size: 42px;
+    line-height: 0.95;
+    font-weight: 900;
+    color: #00f0ff;
+    text-shadow: 0 0 12px #00f0ff, 0 0 26px #0088ff, 3px 3px 0 #ff00a0;
+    letter-spacing: 2px;
+    margin-bottom: 2px;
+  }
+  .tagline {
+    font-size: 13px;
+    font-weight: 800;
+    color: #ff00a0;
+    text-shadow: 0 0 8px #ff00a0;
+    letter-spacing: 2.2px;
+    margin-top: -8px;
+    text-transform: uppercase;
+  }
+  .subtitle {
+    font-size: 15px;
+    font-weight: 800;
+    color: #ffe600;
+    text-shadow: 0 0 8px rgba(255, 230, 0, 0.6);
+    letter-spacing: 1px;
+  }
+  .btn {
+    pointer-events: auto;
+    cursor: pointer;
+    width: 100%;
+    padding: 15px 20px;
+    border-radius: 16px;
+    border: 2px solid #00f0ff;
+    font-size: 21px;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    color: #fff;
+    text-shadow: 0 0 8px #00f0ff;
+    box-shadow: 0 0 15px rgba(0, 240, 255, 0.45), inset 0 0 12px rgba(0, 240, 255, 0.3);
+    transition: transform 0.08s, box-shadow 0.08s;
+    background: linear-gradient(180deg, rgba(0, 180, 255, 0.35) 0%, rgba(0, 90, 190, 0.55) 100%);
+  }
+  .btn:active {
+    transform: translateY(3px) scale(0.98);
+    box-shadow: 0 0 8px rgba(0, 240, 255, 0.7);
+  }
+  .btn-secondary {
+    border-color: #ff00a0;
+    text-shadow: 0 0 8px #ff00a0;
+    box-shadow: 0 0 14px rgba(255, 0, 160, 0.4), inset 0 0 10px rgba(255, 0, 160, 0.25);
+    background: linear-gradient(180deg, rgba(255, 0, 160, 0.3) 0%, rgba(140, 0, 90, 0.5) 100%);
+    font-size: 18px;
+    padding: 12px 18px;
+  }
+  .btn-warn {
+    border-color: #ffe600;
+    color: #ffe600;
+    text-shadow: 0 0 8px #ffe600;
+    box-shadow: 0 0 14px rgba(255, 230, 0, 0.4), inset 0 0 10px rgba(255, 230, 0, 0.25);
+    background: linear-gradient(180deg, rgba(255, 200, 0, 0.28) 0%, rgba(160, 90, 0, 0.48) 100%);
+  }
+  .btn-small {
+    width: auto;
+    padding: 6px 14px;
+    font-size: 16px;
+    border-width: 2px;
+  }
+  .skin-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    width: 100%;
+    margin: 4px 0;
+  }
+  .skin-item {
+    background: rgba(16, 10, 38, 0.9);
+    border: 2px solid #4a2d7a;
+    border-radius: 14px;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-weight: 800;
+    font-size: 13px;
+    color: #d8c8ff;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .skin-item.selected {
+    border-color: #00f0ff;
+    background: rgba(0, 240, 255, 0.14);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.5);
+    color: #ffffff;
+  }
+  .skin-preview {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.6);
+    box-shadow: 0 0 12px currentColor, inset -4px -4px 8px rgba(0,0,0,0.5), inset 4px 4px 8px rgba(255,255,255,0.8);
+  }
+  .howto-text {
+    font-size: 14px;
+    line-height: 1.5;
+    color: #e2d9ff;
+    font-weight: 700;
+    text-align: left;
+    background: rgba(6, 3, 18, 0.78);
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1.5px solid #ff00a0;
+    box-shadow: inset 0 0 10px rgba(255, 0, 160, 0.25);
+  }
+  .howto-text b {
+    color: #00f0ff;
+    text-shadow: 0 0 6px rgba(0, 240, 255, 0.5);
+  }
+</style>
+</head>
+<body>
+<div id="game-container">
+  <canvas id="glcanvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hud" class="ui-layer hidden">
+    <div class="hud-top">
+      <div class="pill" id="hud-level">STAGE 1</div>
+      <div class="pill"><span class="dollar-badge">$</span><span id="hud-coins">0</span></div>
+      <button class="btn btn-secondary btn-small" id="hud-mute-btn">🔊</button>
+    </div>
+    <div class="progress-wrap">
+      <div id="progress-bar"></div>
+    </div>
+    <div id="first-play-hint" class="hidden">DRAG LEFT/RIGHT TO STEER - DRAG UP TO GO FASTER, DOWN TO BRAKE</div>
+  </div>
+
+  <!-- TITLE SCREEN (Strictly PLAY, SOUND, HOW TO buttons) -->
+  <div id="title-screen" class="ui-layer overlay-screen">
+    <div class="card">
+      <div class="game-title">NEON SKY<br>ROLL</div>
+      <div class="tagline">CYBERNETIC OVERDRIVE</div>
+      <div class="subtitle" id="title-best">BEST: STAGE 1 • CASH: $0</div>
+      <button class="btn" id="btn-play">PLAY</button>
+      <button class="btn btn-secondary" id="btn-sound">SOUND: ON</button>
+      <button class="btn btn-warn" id="btn-howto">HOW TO</button>
+    </div>
+  </div>
+
+  <!-- HOW TO MODAL -->
+  <div id="howto-screen" class="ui-layer overlay-screen hidden">
+    <div class="card">
+      <div class="game-title" style="font-size: 30px;">HOW TO PLAY</div>
+      <div class="howto-text">
+        • <b>DRAG LEFT/RIGHT TO STEER - DRAG UP TO GO FASTER, DOWN TO BRAKE</b><br><br>
+        • Hold down to come to a <b>FULL STOP</b> and time dangerous lasers &amp; hammers! Release to resume cruising speed.<br><br>
+        • <b>Desktop:</b> Use <b>A/D</b> or <b>Left/Right</b> to steer, and <b>W/S</b> or <b>Up/Down</b> arrows to accelerate or brake.<br><br>
+        • Collect glowing <b>$</b> cash pickups to unlock neon core skins between stages!
+      </div>
+      <button class="btn" id="btn-howto-back">PLAY</button>
+    </div>
+  </div>
+
+  <!-- GAME OVER SCREEN -->
+  <div id="gameover-screen" class="ui-layer overlay-screen hidden">
+    <div class="card">
+      <div class="game-title" style="font-size: 36px; color: #ff0055; text-shadow: 0 0 14px #ff0055, 2px 2px 0 #ffe600;">WIPED OUT!</div>
+      <div class="subtitle" id="gameover-sub">DERAILED AT 45% OF STAGE 1</div>
+      <button class="btn btn-warn" id="btn-retry" style="font-size: 24px; padding: 18px;">RETRY STAGE</button>
+    </div>
+  </div>
+
+  <!-- LEVEL CLEAR & BALL SHOP SCREEN -->
+  <div id="victory-screen" class="ui-layer overlay-screen hidden">
+    <div class="card">
+      <div class="game-title" style="font-size: 32px;" id="victory-title">STAGE 1 CLEAR!</div>
+      <div class="subtitle" id="shop-coins">BANK: $0</div>
+      <div class="skin-grid" id="skin-grid"></div>
+      <button class="btn" id="btn-next-level">NEXT STAGE</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/**
+ * ============================================================================
+ * PLATFORM SDK ADAPTER GLOBAL HOOKS
+ * ============================================================================
+ * Plain documented global hook functions for external platform wrappers.
+ */
+window.gameLoaded = function() {
+  // Called once when the HTML5 canvas, WebGL context, and assets are ready
+};
+window.gameStarted = function(level) {
+  // Called whenever a level run begins or restarts
+};
+window.gamePaused = function() {
+  // Called when the browser tab becomes hidden or game pauses
+};
+window.gameResumed = function() {
+  // Called when the browser tab regains visibility
+};
+window.gameStopped = function(reason, level, coins) {
+  // Called on Game Over ('fall') or Level Complete ('victory')
+};
+
+(function() {
+  "use strict";
+
+  // ==========================================================================
+  // PERSISTENCE (Safe localStorage with try/catch)
+  // ==========================================================================
+  const STORAGE_KEY = "neon_sky_roll_save_v1";
+  const SKINS = [
+    { id: 0, name: "Cyber Cyan",    color: [0.00, 0.95, 1.00], price: 0 },
+    { id: 1, name: "Hyper Magenta", color: [1.00, 0.05, 0.68], price: 25 },
+    { id: 2, name: "Solar Volt",    color: [1.00, 0.90, 0.05], price: 50 },
+    { id: 3, name: "Matrix Venom",  color: [0.10, 1.00, 0.40], price: 85 }
+  ];
+
+  let saveData = {
+    bestLevel: 1,
+    currentLevel: 1,
+    coins: 0,
+    unlockedSkins: [0],
+    selectedSkin: 0,
+    muted: false,
+    seenHint: false
+  };
+
+  function loadSave() {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        saveData.bestLevel = Math.max(1, parseInt(parsed.bestLevel) || 1);
+        saveData.currentLevel = Math.max(1, parseInt(parsed.currentLevel) || 1);
+        saveData.coins = Math.max(0, parseInt(parsed.coins) || 0);
+        if (Array.isArray(parsed.unlockedSkins) && parsed.unlockedSkins.length) {
+          saveData.unlockedSkins = parsed.unlockedSkins;
+        }
+        saveData.selectedSkin = parseInt(parsed.selectedSkin) || 0;
+        saveData.muted = !!parsed.muted;
+        saveData.seenHint = !!parsed.seenHint;
+      }
+    } catch (e) {
+      // Ignore storage errors in restricted iframes
+    }
+  }
+
+  function writeSave() {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
+    } catch (e) {}
+  }
+
+  loadSave();
+
+  // ==========================================================================
+  // WEBAUDIO SYNTHWAVE SOUNDTRACK & SOUND EFFECTS
+  // ==========================================================================
+  const Sound = {
+    ctx: null,
+    rollGain: null,
+    rollFilter: null,
+    noiseBuf: null,
+    bgmTimer: null,
+    step: 0,
+
+    init() {
+      if (this.ctx) {
+        if (this.ctx.state === "suspended") this.ctx.resume();
+        return;
+      }
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      this.ctx = new AudioCtx();
+
+      // Shared white noise buffer for rolling hum, hi-hats, and wipeout static
+      const bufSize = this.ctx.sampleRate * 2;
+      this.noiseBuf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+      const output = this.noiseBuf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+
+      const whiteNoise = this.ctx.createBufferSource();
+      whiteNoise.buffer = this.noiseBuf;
+      whiteNoise.loop = true;
+
+      this.rollFilter = this.ctx.createBiquadFilter();
+      this.rollFilter.type = "bandpass";
+      this.rollFilter.frequency.value = 160;
+      this.rollFilter.Q.value = 4.0;
+
+      this.rollGain = this.ctx.createGain();
+      this.rollGain.gain.value = 0.0;
+
+      whiteNoise.connect(this.rollFilter);
+      this.rollFilter.connect(this.rollGain);
+      this.rollGain.connect(this.ctx.destination);
+      whiteNoise.start(0);
+
+      this.startMusicLoop();
+    },
+
+    setRollSound(active, currentSpeed, baseSpeed) {
+      if (!this.ctx || !this.rollGain) return;
+      const now = this.ctx.currentTime;
+      if (!active || saveData.muted || gamePausedByTab || currentSpeed < 0.35) {
+        this.rollGain.gain.setTargetAtTime(0, now, 0.035);
+      } else {
+        const ratio = Math.min(2.0, currentSpeed / Math.max(1, baseSpeed));
+        this.rollFilter.frequency.setTargetAtTime(100 + ratio * 150, now, 0.05);
+        this.rollGain.gain.setTargetAtTime(Math.min(0.08, ratio * 0.048), now, 0.05);
+      }
+    },
+
+    // Driving 16th-note sawtooth bass arpeggio
+    playBass(freq, dur, vol) {
+      if (!this.ctx || saveData.muted || gamePausedByTab) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const filter = this.ctx.createBiquadFilter();
+      const gain = this.ctx.createGain();
+
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(freq, now);
+
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(950, now);
+      filter.frequency.exponentialRampToValueAtTime(190, now + dur);
+      filter.Q.value = 3.5;
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(vol, now + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0008, now + dur);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + dur + 0.02);
+    },
+
+    // Warm detuned synthwave pad chord
+    playPadChord(freqs, dur, vol) {
+      if (!this.ctx || saveData.muted || gamePausedByTab) return;
+      const now = this.ctx.currentTime;
+      const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
+
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(680, now);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(vol, now + 0.25);
+      gain.gain.setValueAtTime(vol, now + dur - 0.3);
+      gain.gain.exponentialRampToValueAtTime(0.0008, now + dur);
+
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      freqs.forEach((f) => {
+        [-4.5, 4.5].forEach((detuneCents) => {
+          const osc = this.ctx.createOscillator();
+          osc.type = "sawtooth";
+          osc.frequency.setValueAtTime(f, now);
+          osc.detune.setValueAtTime(detuneCents, now);
+          osc.connect(filter);
+          osc.start(now);
+          osc.stop(now + dur + 0.05);
+        });
+      });
+    },
+
+    // Sparse synthwave lead with stereo-like echo/delay taps
+    playLeadWithDelay(freq, dur, vol) {
+      if (!this.ctx || saveData.muted || gamePausedByTab) return;
+      const taps = [
+        { delay: 0.00, gainMul: 1.00 },
+        { delay: 0.26, gainMul: 0.42 },
+        { delay: 0.52, gainMul: 0.18 }
+      ];
+      taps.forEach((tap) => {
+        const start = this.ctx.currentTime + tap.delay;
+        const osc = this.ctx.createOscillator();
+        const sub = this.ctx.createOscillator();
+        const filter = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+
+        osc.type = "square";
+        sub.type = "sawtooth";
+        osc.frequency.setValueAtTime(freq, start);
+        sub.frequency.setValueAtTime(freq * 1.004, start);
+
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(2100, start);
+
+        const g = vol * tap.gainMul;
+        gain.gain.setValueAtTime(0.0008, start);
+        gain.gain.linearRampToValueAtTime(g, start + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0008, start + dur);
+
+        osc.connect(filter);
+        sub.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(start);
+        sub.start(start);
+        osc.stop(start + dur + 0.02);
+        sub.stop(start + dur + 0.02);
+      });
+    },
+
+    // Punchy electronic kick + crisp high-passed noise hat
+    playKick() {
+      if (!this.ctx || saveData.muted || gamePausedByTab) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(125, now);
+      osc.frequency.exponentialRampToValueAtTime(34, now + 0.13);
+      gain.gain.setValueAtTime(0.11, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.16);
+    },
+
+    playHat(open = false) {
+      if (!this.ctx || !this.noiseBuf || saveData.muted || gamePausedByTab) return;
+      const now = this.ctx.currentTime;
+      const dur = open ? 0.11 : 0.04;
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.noiseBuf;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = "highpass";
+      filter.frequency.setValueAtTime(6500, now);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(open ? 0.032 : 0.02, now);
+      gain.gain.exponentialRampToValueAtTime(0.0008, now + dur);
+
+      src.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+      src.start(now);
+      src.stop(now + dur + 0.01);
+    },
+
+    startMusicLoop() {
+      if (this.bgmTimer) return;
+      // 4-bar synthwave progression in A Minor: Am -> F -> C -> G (64 16th-note steps)
+      const bassRoots = [55.00, 43.65, 65.41, 49.00]; // A1, F1, C2, G1
+      const padChords = [
+        [220.00, 261.63, 329.63], // Am
+        [174.61, 220.00, 261.63], // F
+        [261.63, 329.63, 392.00], // C
+        [196.00, 246.94, 293.66]  // G
+      ];
+      // Sparse atmospheric A-minor melody over 64 steps (0 = rest)
+      const leadNotes = new Array(64).fill(0);
+      leadNotes[0]  = 440.00; // A4
+      leadNotes[3]  = 523.25; // C5
+      leadNotes[6]  = 659.25; // E5
+      leadNotes[12] = 587.33; // D5
+      leadNotes[16] = 523.25; // C5
+      leadNotes[20] = 440.00; // A4
+      leadNotes[24] = 392.00; // G4
+      leadNotes[32] = 523.25; // C5
+      leadNotes[35] = 587.33; // D5
+      leadNotes[38] = 659.25; // E5
+      leadNotes[44] = 783.99; // G5
+      leadNotes[48] = 659.25; // E5
+      leadNotes[52] = 587.33; // D5
+      leadNotes[56] = 493.88; // B4
+
+      // 130ms per 16th note (~115 BPM driving synthwave tempo)
+      this.bgmTimer = setInterval(() => {
+        if (!this.ctx || saveData.muted || gamePausedByTab) return;
+        const s = this.step % 64;
+        const bar = Math.floor(s / 16);
+        const stepInBar = s % 16;
+
+        // Pad chord on beat 1 of each bar
+        if (stepInBar === 0) {
+          this.playPadChord(padChords[bar], 2.0, 0.017);
+        }
+
+        // Driving 16th-note octave-Alternating sawtooth bassline
+        const root = bassRoots[bar];
+        const octaveMul = (stepInBar % 2 === 1) ? 2.0 : 1.0;
+        const fifthMul = (stepInBar === 7 || stepInBar === 15) ? 1.5 : octaveMul;
+        this.playBass(root * fifthMul, 0.115, 0.042);
+
+        // Four-on-the-floor kick + offbeat hi-hat pulse
+        if (stepInBar % 4 === 0) {
+          this.playKick();
+        }
+        if (stepInBar % 4 === 2) {
+          this.playHat(true);
+        } else if (stepInBar % 2 === 1) {
+          this.playHat(false);
+        }
+
+        // Sparse echo lead
+        if (leadNotes[s] > 0) {
+          this.playLeadWithDelay(leadNotes[s], 0.24, 0.026);
+        }
+
+        this.step++;
+      }, 130);
+    },
+
+    coin() {
+      if (!this.ctx || saveData.muted) return;
+      this.playLeadWithDelay(1046.50, 0.10, 0.055);
+      setTimeout(() => this.playLeadWithDelay(1567.98, 0.18, 0.055), 55);
+    },
+
+    bump() {
+      if (!this.ctx || saveData.muted) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(175, now);
+      osc.frequency.exponentialRampToValueAtTime(38, now + 0.19);
+      gain.gain.setValueAtTime(0.20, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.20);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.21);
+    },
+
+    wipeout() {
+      if (!this.ctx || saveData.muted) return;
+      const now = this.ctx.currentTime;
+      // Cyber power-down synth sweep
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(380, now);
+      osc.frequency.exponentialRampToValueAtTime(32, now + 0.65);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.68);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.7);
+    },
+
+    win() {
+      if (!this.ctx || saveData.muted) return;
+      const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+      notes.forEach((n, i) => {
+        setTimeout(() => this.playLeadWithDelay(n, 0.28, 0.055), i * 80);
+      });
+    }
+  };
+
+  // ==========================================================================
+  // CUSTOM WEBGL 3D ENGINE & CYBERPUNK SHADERS
+  // ==========================================================================
+  const canvas = document.getElementById("glcanvas");
+  const gl = canvas.getContext("webgl", { antialias: true, alpha: false });
+
+  const vsSource = `
+    attribute vec3 aPos;
+    attribute vec3 aNorm;
+    uniform mat4 uModel;
+    uniform mat4 uVP;
+    varying vec3 vNorm;
+    varying vec3 vLocalPos;
+    varying vec3 vWorldPos;
+    void main() {
+      vLocalPos = aPos;
+      vec4 wp = uModel * vec4(aPos, 1.0);
+      vWorldPos = wp.xyz;
+      vNorm = mat3(uModel) * aNorm;
+      gl_Position = uVP * wp;
+    }
+  `;
+
+  // Modes:
+  // 0: Dark Cyber Panel / Standard Lit
+  // 1: Glossy Emissive Neon Player Ball
+  // 2: Neon Synthwave Grid Floor below track
+  // 3: Checkered Neon Finish Arch
+  // 4: Pure Emissive Neon (Edges, Dollar Signs, Lasers, Stars, Trail)
+  // 5: Retrowave Sun (Scanline gradient disc)
+  // 6: Cyberpunk Skyscraper with lit window grid
+  const fsSource = `
+    precision mediump float;
+    varying vec3 vNorm;
+    varying vec3 vLocalPos;
+    varying vec3 vWorldPos;
+    uniform vec3 uColor;
+    uniform float uMode;
+    uniform float uTime;
+
+    void main() {
+      vec3 norm = normalize(vNorm);
+      vec3 lightDir = normalize(vec3(0.35, 0.85, 0.45));
+      vec3 baseColor = uColor;
+      vec3 finalCol = uColor;
+
+      if (uMode > 5.5) {
+        // Mode 6: Cyberpunk Skyscraper with procedural lit windows
+        vec3 col = vec3(0.04, 0.02, 0.10);
+        if (abs(norm.y) < 0.5) {
+          float wx = fract(vWorldPos.x * 1.6);
+          float wz = fract(vWorldPos.z * 1.6);
+          float wy = fract(vWorldPos.y * 1.2);
+          float winX = step(0.28, wx) * step(wx, 0.72);
+          float winZ = step(0.28, wz) * step(wz, 0.72);
+          float winY = step(0.25, wy) * step(wy, 0.75);
+          float isWin = max(winX, winZ) * winY;
+          float cellHash = fract(sin(floor(vWorldPos.y * 1.2) * 17.3 + floor(vWorldPos.z * 0.5) * 31.7 + floor(vWorldPos.x * 0.5) * 11.1) * 43758.5453);
+          if (isWin > 0.5 && cellHash > 0.42) {
+            col = (cellHash > 0.75) ? vec3(0.0, 0.92, 1.0) : ((cellHash > 0.56) ? vec3(1.0, 0.08, 0.65) : vec3(1.0, 0.88, 0.15));
+          }
+        }
+        // Subtle top rim glow
+        col += uColor * clamp((vLocalPos.y + 0.5), 0.0, 1.0) * 0.25;
+        finalCol = col;
+      } else if (uMode > 4.5) {
+        // Mode 5: Retrowave Sun with horizontal scanline cutouts
+        float t = clamp(vLocalPos.y + 0.5, 0.0, 1.0);
+        vec3 sunCol = mix(vec3(1.0, 0.0, 0.55), vec3(1.0, 0.92, 0.10), t);
+        if (t < 0.58) {
+          float stripe = sin(vLocalPos.y * 52.0 + uTime * 1.5);
+          if (stripe < -0.15) {
+            sunCol = vec3(0.06, 0.02, 0.15);
+          }
+        }
+        gl_FragColor = vec4(sunCol, 1.0);
+        return;
+      } else if (uMode > 3.5) {
+        // Mode 4: Pure Emissive Neon (Dollar signs, neon rails, stars, particles)
+        float pulse = 0.92 + 0.08 * sin(uTime * 6.0);
+        finalCol = baseColor * pulse;
+      } else if (uMode > 2.5) {
+        // Mode 3: Checkered Neon Finish Arch
+        float cx = floor(vWorldPos.x * 2.5);
+        float cy = floor(vWorldPos.y * 2.5);
+        float m = mod(cx + cy, 2.0);
+        finalCol = mix(vec3(0.06, 0.02, 0.14), vec3(0.0, 0.96, 1.0), m);
+      } else if (uMode > 1.5) {
+        // Mode 2: Synthwave Neon Horizon Grid Plane below track
+        float gx = abs(fract(vWorldPos.x * 0.25) - 0.5);
+        float gz = abs(fract(vWorldPos.z * 0.25) - 0.5);
+        float line = 1.0 - smoothstep(0.015, 0.045, min(gx, gz));
+        vec3 gridCol = mix(vec3(0.0, 0.85, 1.0), vec3(1.0, 0.0, 0.65), clamp((-vWorldPos.z) * 0.005, 0.0, 1.0));
+        finalCol = mix(vec3(0.03, 0.01, 0.08), gridCol, line * 0.75);
+      } else if (uMode > 0.5) {
+        // Mode 1: Glossy Emissive Player Ball with glowing energy bands
+        float band = smoothstep(-0.06, 0.06, sin(vLocalPos.x * 5.0));
+        vec3 core = mix(baseColor, vec3(1.0, 1.0, 1.0), band * 0.42);
+        float diff = max(dot(norm, lightDir), 0.0);
+        vec3 viewDir = normalize(vec3(0.0, 5.0, 9.0));
+        float rim = pow(1.0 - max(dot(viewDir, norm), 0.0), 2.2);
+        vec3 refl = reflect(-lightDir, norm);
+        float spec = pow(max(dot(viewDir, refl), 0.0), 28.0);
+        finalCol = core * (0.68 + diff * 0.35) + baseColor * rim * 0.75 + vec3(0.95) * spec;
+      } else {
+        // Mode 0: Dark metallic track panels with subtle grid lines
+        float diff = max(dot(norm, lightDir), 0.0);
+        float panelGrid = step(0.94, fract(vWorldPos.x * 1.2)) + step(0.96, fract(vWorldPos.z * 0.8));
+        vec3 panelCol = baseColor + vec3(0.04, 0.07, 0.14) * clamp(panelGrid, 0.0, 1.0);
+        finalCol = panelCol * (0.55 + diff * 0.45);
+      }
+
+      // Purple/Cyan Cyberpunk atmospheric distance fog
+      float dist = max(0.0, -vWorldPos.z - 35.0);
+      float fog = clamp(dist / 135.0, 0.0, 0.78);
+      vec3 fogCol = mix(vec3(0.11, 0.03, 0.24), vec3(0.0, 0.42, 0.62), clamp(vWorldPos.y * 0.08 + 0.3, 0.0, 1.0));
+      finalCol = mix(finalCol, fogCol, fog);
+
+      gl_FragColor = vec4(finalCol, 1.0);
+    }
+  `;
+
+  function compileShader(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    return s;
+  }
+
+  const prog = gl.createProgram();
+  gl.attachShader(prog, compileShader(gl.VERTEX_SHADER, vsSource));
+  gl.attachShader(prog, compileShader(gl.FRAGMENT_SHADER, fsSource));
+  gl.linkProgram(prog);
+  gl.useProgram(prog);
+
+  const aPos = gl.getAttribLocation(prog, "aPos");
+  const aNorm = gl.getAttribLocation(prog, "aNorm");
+  const uModel = gl.getUniformLocation(prog, "uModel");
+  const uVP = gl.getUniformLocation(prog, "uVP");
+  const uColor = gl.getUniformLocation(prog, "uColor");
+  const uMode = gl.getUniformLocation(prog, "uMode");
+  const uTime = gl.getUniformLocation(prog, "uTime");
+
+  gl.enableVertexAttribArray(aPos);
+  gl.enableVertexAttribArray(aNorm);
+  gl.enable(gl.DEPTH_TEST);
+  gl.enable(gl.CULL_FACE);
+
+  // ==========================================================================
+  // 3D MATRIX MATH HELPERS
+  // ==========================================================================
+  const m4 = {
+    identity(out) {
+      out.fill(0);
+      out[0] = out[5] = out[10] = out[15] = 1;
+      return out;
+    },
+    perspective(out, fovy, aspect, near, far) {
+      const f = 1.0 / Math.tan(fovy / 2);
+      const nf = 1 / (near - far);
+      out.fill(0);
+      out[0] = f / aspect;
+      out[5] = f;
+      out[10] = (far + near) * nf;
+      out[11] = -1;
+      out[14] = 2 * far * near * nf;
+      return out;
+    },
+    lookAt(out, eye, center, up) {
+      let z0 = eye[0] - center[0], z1 = eye[1] - center[1], z2 = eye[2] - center[2];
+      let len = 1 / Math.hypot(z0, z1, z2);
+      z0 *= len; z1 *= len; z2 *= len;
+      let x0 = up[1] * z2 - up[2] * z1,
+          x1 = up[2] * z0 - up[0] * z2,
+          x2 = up[0] * z1 - up[1] * z0;
+      len = Math.hypot(x0, x1, x2);
+      if (len) { len = 1 / len; x0 *= len; x1 *= len; x2 *= len; }
+      let y0 = z1 * x2 - z2 * x1, y1 = z2 * x0 - z0 * x2, y2 = z0 * x1 - z1 * x0;
+      out[0] = x0; out[1] = y0; out[2] = z0; out[3] = 0;
+      out[4] = x1; out[5] = y1; out[6] = z1; out[7] = 0;
+      out[8] = x2; out[9] = y2; out[10] = z2; out[11] = 0;
+      out[12] = -(x0 * eye[0] + x1 * eye[1] + x2 * eye[2]);
+      out[13] = -(y0 * eye[0] + y1 * eye[1] + y2 * eye[2]);
+      out[14] = -(z0 * eye[0] + z1 * eye[1] + z2 * eye[2]);
+      out[15] = 1;
+      return out;
+    },
+    multiply(out, a, b) {
+      const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3],
+            a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7],
+            a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11],
+            a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+      for (let i = 0; i < 4; i++) {
+        const b0 = b[i*4], b1 = b[i*4+1], b2 = b[i*4+2], b3 = b[i*4+3];
+        out[i*4]   = b0*a00 + b1*a10 + b2*a20 + b3*a30;
+        out[i*4+1] = b0*a01 + b1*a11 + b2*a21 + b3*a31;
+        out[i*4+2] = b0*a02 + b1*a12 + b2*a22 + b3*a32;
+        out[i*4+3] = b0*a03 + b1*a13 + b2*a23 + b3*a33;
+      }
+      return out;
+    },
+    compose(out, tx, ty, tz, rx, ry, rz, sx, sy, sz) {
+      const cx = Math.cos(rx), sx_ = Math.sin(rx);
+      const cy = Math.cos(ry), sy_ = Math.sin(ry);
+      const cz = Math.cos(rz), sz_ = Math.sin(rz);
+
+      out[0] = (cy * cz) * sx;
+      out[1] = (cy * sz_) * sx;
+      out[2] = (-sy_) * sx;
+      out[3] = 0;
+
+      out[4] = (sx_ * sy_ * cz - cx * sz_) * sy;
+      out[5] = (sx_ * sy_ * sz_ + cx * cz) * sy;
+      out[6] = (sx_ * cy) * sy;
+      out[7] = 0;
+
+      out[8] = (cx * sy_ * cz + sx_ * sz_) * sz;
+      out[9] = (cx * sy_ * sz_ - sx_ * cz) * sz;
+      out[10] = (cx * cy) * sz;
+      out[11] = 0;
+
+      out[12] = tx;
+      out[13] = ty;
+      out[14] = tz;
+      out[15] = 1;
+      return out;
+    }
+  };
+
+  const matProj = new Float32Array(16);
+  const matView = new Float32Array(16);
+  const matVP   = new Float32Array(16);
+  const matMod  = new Float32Array(16);
+
+  // ==========================================================================
+  // PROCEDURAL 3D MESH BUILDERS (Including 3D Dollar Sign '$' Mesh)
+  // ==========================================================================
+  function createMesh(positions, normals, indices) {
+    const vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+    const nbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, nbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+
+    const ibo = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+    return { vbo, nbo, ibo, count: indices.length };
+  }
+
+  function appendBoxToGeometry(p, n, idx, cx, cy, cz, sx, sy, sz) {
+    const base = p.length / 3;
+    const hx = sx * 0.5, hy = sy * 0.5, hz = sz * 0.5;
+    const faces = [
+      // Front
+      { norm: [0,0,1],  verts: [[-hx,-hy, hz], [ hx,-hy, hz], [ hx, hy, hz], [-hx, hy, hz]] },
+      // Back
+      { norm: [0,0,-1], verts: [[ hx,-hy,-hz], [-hx,-hy,-hz], [-hx, hy,-hz], [ hx, hy,-hz]] },
+      // Top
+      { norm: [0,1,0],  verts: [[-hx, hy, hz], [ hx, hy, hz], [ hx, hy,-hz], [-hx, hy,-hz]] },
+      // Bottom
+      { norm: [0,-1,0], verts: [[-hx,-hy,-hz], [ hx,-hy,-hz], [ hx,-hy, hz], [-hx,-hy, hz]] },
+      // Right
+      { norm: [1,0,0],  verts: [[ hx,-hy, hz], [ hx,-hy,-hz], [ hx, hy,-hz], [ hx, hy, hz]] },
+      // Left
+      { norm: [-1,0,0], verts: [[-hx,-hy,-hz], [-hx,-hy, hz], [-hx, hy, hz], [-hx, hy,-hz]] }
+    ];
+    faces.forEach((f, fIdx) => {
+      const o = base + fIdx * 4;
+      f.verts.forEach((v) => {
+        p.push(cx + v[0], cy + v[1], cz + v[2]);
+        n.push(f.norm[0], f.norm[1], f.norm[2]);
+      });
+      idx.push(o, o+1, o+2, o, o+2, o+3);
+    });
+  }
+
+  function buildCubeMesh() {
+    const p = [], n = [], idx = [];
+    appendBoxToGeometry(p, n, idx, 0, 0, 0, 1, 1, 1);
+    return createMesh(p, n, idx);
+  }
+
+  // Compound 3D Dollar Sign ($) Mesh that spins and reads unmistakably as $
+  function buildDollarMesh() {
+    const p = [], n = [], idx = [];
+    const d = 0.16; // Extrusion depth
+    // Top bar of S
+    appendBoxToGeometry(p, n, idx,  0.00,  0.34, 0, 0.58, 0.13, d);
+    // Upper-left vertical of S
+    appendBoxToGeometry(p, n, idx, -0.22,  0.17, 0, 0.14, 0.30, d);
+    // Middle bar of S
+    appendBoxToGeometry(p, n, idx,  0.00,  0.00, 0, 0.58, 0.13, d);
+    // Lower-right vertical of S
+    appendBoxToGeometry(p, n, idx,  0.22, -0.17, 0, 0.14, 0.30, d);
+    // Bottom bar of S
+    appendBoxToGeometry(p, n, idx,  0.00, -0.34, 0, 0.58, 0.13, d);
+    // Center vertical slash through the S (slightly thicker in Z so it stands proud)
+    appendBoxToGeometry(p, n, idx,  0.00,  0.00, 0, 0.13, 1.05, d * 1.28);
+    return createMesh(p, n, idx);
+  }
+
+  function buildSphereMesh(latBands, lonBands) {
+    const p = [], n = [], idx = [];
+    for (let lat = 0; lat <= latBands; lat++) {
+      const theta = lat * Math.PI / latBands;
+      const sinT = Math.sin(theta), cosT = Math.cos(theta);
+      for (let lon = 0; lon <= lonBands; lon++) {
+        const phi = lon * 2 * Math.PI / lonBands;
+        const x = Math.cos(phi) * sinT;
+        const y = cosT;
+        const z = Math.sin(phi) * sinT;
+        p.push(x, y, z);
+        n.push(x, y, z);
+      }
+    }
+    for (let lat = 0; lat < latBands; lat++) {
+      for (let lon = 0; lon < lonBands; lon++) {
+        const first = (lat * (lonBands + 1)) + lon;
+        const second = first + lonBands + 1;
+        idx.push(first, second, first + 1, second, second + 1, first + 1);
+      }
+    }
+    return createMesh(p, n, idx);
+  }
+
+  function buildCylinderMesh(segs) {
+    const p = [], n = [], idx = [];
+    for (let i = 0; i <= segs; i++) {
+      const a = (i / segs) * Math.PI * 2;
+      const c = Math.cos(a), s = Math.sin(a);
+      p.push(c * 0.5, -0.5, s * 0.5); n.push(c, 0, s);
+      p.push(c * 0.5,  0.5, s * 0.5); n.push(c, 0, s);
+    }
+    for (let i = 0; i < segs; i++) {
+      const o = i * 2;
+      idx.push(o, o+1, o+2, o+1, o+3, o+2);
+    }
+    const topCenter = p.length / 3;
+    p.push(0, 0.5, 0); n.push(0, 1, 0);
+    for (let i = 0; i <= segs; i++) {
+      const a = (i / segs) * Math.PI * 2;
+      p.push(Math.cos(a)*0.5, 0.5, Math.sin(a)*0.5);
+      n.push(0, 1, 0);
+    }
+    for (let i = 0; i < segs; i++) {
+      idx.push(topCenter, topCenter + i + 2, topCenter + i + 1);
+    }
+    return createMesh(p, n, idx);
+  }
+
+  const meshCube   = buildCubeMesh();
+  const meshDollar = buildDollarMesh();
+  const meshSphere = buildSphereMesh(16, 16);
+  const meshCyl    = buildCylinderMesh(14);
+
+  let activeMesh = null;
+  function drawMesh(mesh, tx, ty, tz, rx, ry, rz, sx, sy, sz, color, mode = 0) {
+    if (activeMesh !== mesh) {
+      activeMesh = mesh;
+      gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vbo);
+      gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, mesh.nbo);
+      gl.vertexAttribPointer(aNorm, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ibo);
+    }
+    m4.compose(matMod, tx, ty, tz, rx, ry, rz, sx, sy, sz);
+    gl.uniformMatrix4fv(uModel, false, matMod);
+    gl.uniform3fv(uColor, color);
+    gl.uniform1f(uMode, mode);
+    gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, 0);
+  }
+
+  // ==========================================================================
+  // LEVEL DEFINITIONS & WORLD GENERATOR (5 Extended ~95-115s Fair Stages)
+  // ==========================================================================
+  const BALL_RADIUS = 0.45;
+
+  // Each base configuration is repeated 4 cycles with progressive variations and
+  // breather sections so every stage is ~1,100 to 1,500 units (~95-115 seconds at base speed)
+  const LEVEL_CONFIGS = [
+    // Stage 1: Neon Horizon (Base speed 11.5, ~1100 units -> ~96s at cruising speed)
+    {
+      speed: 11.5,
+      cycles: 4,
+      segments: [
+        { type: "flat", len: 24, w: 3.8, rails: true },
+        { type: "coins", len: 20, w: 3.8, pattern: "center" },
+        { type: "missing_plank", len: 16, w: 3.8, holeSide: -1 },
+        { type: "coins", len: 18, w: 3.8, pattern: "wave" },
+        { type: "barrier", len: 20, w: 3.8, speed: 1.75 },
+        { type: "flat", len: 16, w: 3.8, rails: true }, // Breather
+        { type: "missing_plank", len: 16, w: 3.8, holeSide: 1 },
+        { type: "barrier", len: 20, w: 3.8, speed: 1.9 },
+        { type: "coins", len: 18, w: 3.8, pattern: "zig" },
+        { type: "ramp", len: 11, w: 3.6 },
+        { type: "gap", len: 4.5 },
+        { type: "flat", len: 22, w: 3.8, rails: true },
+        { type: "hammer", len: 20, w: 3.8, speed: 1.95, phase: 0 },
+        { type: "coins", len: 20, w: 3.8, pattern: "wave" },
+        { type: "flat", len: 20, w: 3.8, rails: true }
+      ]
+    },
+    // Stage 2: Cyber Grid Overpass (Base speed 12.8, ~1220 units -> ~95s)
+    {
+      speed: 12.8,
+      cycles: 4,
+      segments: [
+        { type: "flat", len: 20, w: 3.6, rails: true },
+        { type: "hammer", len: 20, w: 3.6, speed: 2.05, phase: 0 },
+        { type: "coins", len: 18, w: 3.6, pattern: "wave" },
+        { type: "missing_plank", len: 16, w: 3.6, holeSide: 1 },
+        { type: "narrow", len: 20, w: 2.15 },
+        { type: "flat", len: 16, w: 3.6, rails: true }, // Breather
+        { type: "hammer", len: 20, w: 3.6, speed: 2.2, phase: 1.5 },
+        { type: "barrier", len: 20, w: 3.6, speed: 2.1 },
+        { type: "coins", len: 18, w: 3.6, pattern: "zig" },
+        { type: "ramp", len: 11, w: 3.4 },
+        { type: "gap", len: 5.0 },
+        { type: "flat", len: 18, w: 3.6, rails: true },
+        { type: "sweeper", len: 22, w: 3.8, speed: 2.0 },
+        { type: "missing_plank", len: 16, w: 3.6, holeSide: -1 },
+        { type: "coins", len: 20, w: 3.6, pattern: "center" },
+        { type: "flat", len: 20, w: 3.8, rails: true }
+      ]
+    },
+    // Stage 3: Synthwave Skyway (Base speed 14.0, ~1320 units -> ~95s)
+    {
+      speed: 14.0,
+      cycles: 4,
+      segments: [
+        { type: "flat", len: 20, w: 3.6, rails: true },
+        { type: "sweeper", len: 22, w: 3.8, speed: 2.15 },
+        { type: "coins", len: 18, w: 3.6, pattern: "zig" },
+        { type: "ramp", len: 11, w: 3.3 },
+        { type: "gap", len: 5.5 },
+        { type: "flat", len: 16, w: 3.6, rails: true }, // Breather
+        { type: "hammer", len: 20, w: 3.6, speed: 2.35, phase: 0.7 },
+        { type: "missing_plank", len: 16, w: 3.6, holeSide: -1 },
+        { type: "barrier", len: 20, w: 3.6, speed: 2.3 },
+        { type: "narrow", len: 20, w: 2.05 },
+        { type: "flat", len: 16, w: 3.6, rails: true }, // Breather
+        { type: "sweeper", len: 22, w: 3.8, speed: 2.3 },
+        { type: "coins", len: 20, w: 3.6, pattern: "wave" },
+        { type: "hammer", len: 20, w: 3.6, speed: 2.4, phase: 2.1 },
+        { type: "flat", len: 20, w: 3.8, rails: true }
+      ]
+    },
+    // Stage 4: Laser Megastructure (Base speed 15.2, ~1440 units -> ~95s)
+    {
+      speed: 15.2,
+      cycles: 4,
+      segments: [
+        { type: "flat", len: 20, w: 3.4, rails: true },
+        { type: "barrier", len: 18, w: 3.4, speed: 2.45 },
+        { type: "narrow", len: 20, w: 1.95 },
+        { type: "hammer", len: 20, w: 3.4, speed: 2.55, phase: 0 },
+        { type: "flat", len: 16, w: 3.5, rails: true }, // Breather
+        { type: "hammer", len: 20, w: 3.4, speed: 2.55, phase: 2.2 },
+        { type: "ramp", len: 11, w: 3.1 },
+        { type: "gap", len: 6.0 },
+        { type: "flat", len: 16, w: 3.5, rails: true },
+        { type: "sweeper", len: 22, w: 3.6, speed: 2.45 },
+        { type: "missing_plank", len: 16, w: 3.4, holeSide: 1 },
+        { type: "coins", len: 18, w: 3.4, pattern: "wave" },
+        { type: "barrier", len: 18, w: 3.4, speed: 2.55 },
+        { type: "sweeper", len: 22, w: 3.6, speed: 2.55 },
+        { type: "flat", len: 20, w: 3.6, rails: true }
+      ]
+    },
+    // Stage 5+: Hypercore Nexus (Base speed 16.4, ~1560 units -> ~95s)
+    {
+      speed: 16.4,
+      cycles: 4,
+      segments: [
+        { type: "flat", len: 20, w: 3.4, rails: true },
+        { type: "sweeper", len: 20, w: 3.6, speed: 2.65 },
+        { type: "narrow", len: 20, w: 1.85 },
+        { type: "ramp", len: 11, w: 3.0 },
+        { type: "gap", len: 6.4 },
+        { type: "flat", len: 16, w: 3.4, rails: true }, // Breather
+        { type: "hammer", len: 18, w: 3.4, speed: 2.75, phase: 0.2 },
+        { type: "barrier", len: 18, w: 3.4, speed: 2.75 },
+        { type: "missing_plank", len: 15, w: 3.4, holeSide: -1 },
+        { type: "missing_plank", len: 15, w: 3.4, holeSide: 1 },
+        { type: "flat", len: 16, w: 3.4, rails: true }, // Breather
+        { type: "sweeper", len: 20, w: 3.6, speed: 2.75 },
+        { type: "coins", len: 18, w: 3.4, pattern: "zig" },
+        { type: "ramp", len: 11, w: 3.0 },
+        { type: "gap", len: 6.6 },
+        { type: "flat", len: 22, w: 3.6, rails: true }
+      ]
+    }
+  ];
+
+  let platforms = [];
+  let obstacles = [];
+  let coins = [];
+  let buildings = [];
+  let stars = [];
+  let finishZ = -1000;
+
+  function buildLevel(levelNum) {
+    platforms = [];
+    obstacles = [];
+    coins = [];
+    buildings = [];
+    stars = [];
+
+    const cfgIndex = Math.min(levelNum - 1, LEVEL_CONFIGS.length - 1);
+    const cfg = LEVEL_CONFIGS[cfgIndex];
+    const extraLevels = Math.max(0, levelNum - LEVEL_CONFIGS.length);
+    ball.baseSpeed = cfg.speed + extraLevels * 0.55;
+    ball.currentSpeed = ball.baseSpeed;
+
+    let zCursor = 2.5;
+    const totalCycles = cfg.cycles || 4;
+
+    for (let c = 0; c < totalCycles; c++) {
+      const sideFlip = (c % 2 === 0) ? 1 : -1;
+      const cycleSpeedBoost = 1.0 + c * 0.04;
+
+      cfg.segments.forEach((seg, segIdx) => {
+        const zStart = zCursor;
+        const zEnd = zCursor - seg.len;
+        const zMid = (zStart + zEnd) * 0.5;
+
+        if (seg.type === "gap") {
+          // Open sky gap
+        } else if (seg.type === "ramp") {
+          platforms.push({
+            x: 0, zStart, zEnd, w: seg.w,
+            yStart: 0, yEnd: 1.35, rails: false, isRamp: true
+          });
+          addDollarLine(0, zStart - 2, zEnd + 1, 3, "center", 0.7);
+        } else if (seg.type === "missing_plank") {
+          const halfW = seg.w * 0.46;
+          const safeSide = -(seg.holeSide * sideFlip);
+          platforms.push({ x: 0, zStart, zEnd: zStart - 3, w: seg.w, yStart: 0, yEnd: 0, rails: false });
+          platforms.push({
+            x: safeSide * (seg.w * 0.26),
+            zStart: zStart - 3,
+            zEnd: zEnd + 3,
+            w: halfW,
+            yStart: 0, yEnd: 0, rails: false
+          });
+          platforms.push({ x: 0, zStart: zEnd + 3, zEnd, w: seg.w, yStart: 0, yEnd: 0, rails: false });
+          addDollarLine(safeSide * (seg.w * 0.26), zStart - 4, zEnd + 4, 4, "center", 0);
+        } else {
+          platforms.push({
+            x: 0, zStart, zEnd, w: seg.w,
+            yStart: 0, yEnd: 0,
+            rails: !!seg.rails,
+            isRamp: false
+          });
+
+          if (seg.type === "coins" || seg.type === "narrow") {
+            addDollarLine(0, zStart - 2, zEnd + 2, 6, seg.pattern || "center", 0);
+          }
+          if (seg.type === "barrier") {
+            obstacles.push({
+              type: "barrier",
+              z: zMid,
+              w: seg.w,
+              speed: seg.speed * cycleSpeedBoost,
+              phase: (c * 1.7 + segIdx * 0.9) % 6.28
+            });
+            addDollarLine(0, zStart - 2, zEnd + 2, 4, "wave", 0);
+          }
+          if (seg.type === "hammer") {
+            obstacles.push({
+              type: "hammer",
+              z: zMid,
+              w: seg.w,
+              speed: seg.speed * cycleSpeedBoost,
+              phase: (seg.phase || 0) + c * 1.1
+            });
+            addDollarLine(0, zStart - 2.5, zEnd + 2.5, 3, "center", 0);
+          }
+          if (seg.type === "sweeper") {
+            obstacles.push({
+              type: "sweeper",
+              z: zMid,
+              w: seg.w,
+              speed: seg.speed * cycleSpeedBoost,
+              angle: (c * 2.1 + segIdx) % 6.28
+            });
+          }
+        }
+        zCursor = zEnd;
+      });
+    }
+
+    finishZ = zCursor + 3.5;
+
+    // Distant Cyberpunk Skyscrapers flanking the track
+    for (let z = 0; z > finishZ - 90; z -= 22) {
+      for (let side of [-1, 1]) {
+        const hash = Math.abs(Math.sin(z * 0.13 + side * 4.7));
+        const dist = 14 + (hash * 18);
+        const w = 4.2 + (hash * 4.5);
+        const h = 14 + ((Math.abs(Math.cos(z * 0.29 + side)) * 28));
+        const tint = (Math.abs(z) % 44 === 0) ? [1.0, 0.0, 0.65] : [0.0, 0.9, 1.0];
+        buildings.push({
+          x: side * dist,
+          y: -22 + h * 0.5,
+          z: z - (hash * 8),
+          w, h,
+          d: 4.5 + hash * 4.0,
+          tint
+        });
+      }
+    }
+
+    // Starfield points (rendered relative to camera Z so they fill the sky all run)
+    for (let i = 0; i < 65; i++) {
+      stars.push({
+        x: ((i * 37) % 130) - 65,
+        y: 8 + ((i * 19) % 38),
+        zOffset: -20 - ((i * 29) % 115),
+        size: 0.14 + (i % 3) * 0.08,
+        color: (i % 5 === 0) ? [0.0, 0.95, 1.0] : ((i % 7 === 0) ? [1.0, 0.2, 0.8] : [0.95, 0.96, 1.0])
+      });
+    }
+  }
+
+  function addDollarLine(baseX, zStart, zEnd, count, pattern, extraY) {
+    for (let i = 0; i < count; i++) {
+      const t = count === 1 ? 0.5 : i / (count - 1);
+      const z = zStart + (zEnd - zStart) * t;
+      let x = baseX;
+      if (pattern === "wave") x += Math.sin(t * Math.PI * 2) * 1.1;
+      if (pattern === "zig") x += (i % 2 === 0 ? -0.85 : 0.85);
+      coins.push({ x, y: 0.62 + extraY * t, z, taken: false });
+    }
+  }
+
+  // ==========================================================================
+  // PLAYER BALL, NEON TRAIL & PARTICLE SYSTEM (Capped for 60fps mobile)
+  // ==========================================================================
+  const ball = {
+    x: 0,
+    y: BALL_RADIUS,
+    z: 0,
+    vx: 0,
+    vy: 0,
+    baseSpeed: 11.5,
+    currentSpeed: 11.5,
+    speedMultiplier: 1.0, // 0.0 (full brake stop) to 1.6 (max boost)
+    rollAngle: 0,
+    squashY: 1,
+    squashXZ: 1,
+    supported: true,
+    shadowY: 0.02
+  };
+
+  // Subtle neon glow trail behind the ball
+  const TRAIL_LEN = 12;
+  const trail = [];
+  for (let i = 0; i < TRAIL_LEN; i++) {
+    trail.push({ x: 0, y: BALL_RADIUS, z: 0, active: false });
+  }
+  let trailTimer = 0;
+
+  const MAX_PARTICLES = 45;
+  const particles = [];
+  for (let i = 0; i < MAX_PARTICLES; i++) {
+    particles.push({ active: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, maxLife: 1, color: [1, 1, 0], size: 0.2 });
+  }
+
+  function spawnParticles(x, y, z, count, color, speed = 4.5) {
+    let spawned = 0;
+    for (let i = 0; i < MAX_PARTICLES && spawned < count; i++) {
+      const p = particles[i];
+      if (!p.active) {
+        p.active = true;
+        p.x = x; p.y = y; p.z = z;
+        const a = Math.random() * Math.PI * 2;
+        const s = (0.3 + Math.random() * 0.7) * speed;
+        p.vx = Math.cos(a) * s;
+        p.vy = 2.0 + Math.random() * speed;
+        p.vz = Math.sin(a) * s;
+        p.life = 0;
+        p.maxLife = 0.35 + Math.random() * 0.25;
+        p.color = color;
+        p.size = 0.14 + Math.random() * 0.12;
+        spawned++;
+      }
+    }
+  }
+
+  // ==========================================================================
+  // GAME STATE & INPUT HANDLING (2D Touch Drag: X=Steer, Y=Speed/Brake + Keys)
+  // ==========================================================================
+  let gameState = "TITLE"; // TITLE, PLAYING, GAMEOVER, VICTORY
+  let gamePausedByTab = false;
+  let globalTime = 0;
+  let shakeTime = 0;
+  let targetSteerX = 0;
+  let touchSpeedRatio = 1.0; // Controlled by vertical drag while pointer is down
+  const keys = { left: false, right: false, up: false, down: false };
+
+  let pointerDown = false;
+  let lastPointerX = 0;
+  let lastPointerY = 0;
+
+  function onPointerDown(x, y) {
+    Sound.init();
+    pointerDown = true;
+    lastPointerX = x;
+    lastPointerY = y;
+    touchSpeedRatio = ball.speedMultiplier;
+  }
+
+  function onPointerMove(x, y) {
+    if (!pointerDown || gameState !== "PLAYING") return;
+    const dx = x - lastPointerX;
+    const dy = y - lastPointerY;
+    lastPointerX = x;
+    lastPointerY = y;
+
+    const vw = Math.max(320, window.innerWidth);
+    const vh = Math.max(480, window.innerHeight);
+
+    // Horizontal drag steers sideways
+    targetSteerX += (dx / vw) * 7.2;
+    targetSteerX = Math.max(-3.0, Math.min(3.0, targetSteerX));
+
+    // Vertical drag controls speed: UP (negative dy) accelerates to 1.6x, DOWN (positive dy) brakes to 0.0 (full stop)
+    touchSpeedRatio -= (dy / vh) * 4.2;
+    touchSpeedRatio = Math.max(0.0, Math.min(1.6, touchSpeedRatio));
+
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+      dismissHint();
+    }
+  }
+
+  function onPointerUp() {
+    pointerDown = false;
+    touchSpeedRatio = 1.0;
+  }
+
+  window.addEventListener("touchstart", (e) => {
+    if (e.target.tagName !== "BUTTON" && !e.target.closest(".skin-item")) {
+      e.preventDefault();
+    }
+    if (e.touches.length > 0) onPointerDown(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+
+  window.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+    if (e.touches.length > 0) onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: false });
+
+  window.addEventListener("touchend", () => onPointerUp(), { passive: false });
+  window.addEventListener("touchcancel", () => onPointerUp(), { passive: false });
+
+  window.addEventListener("mousedown", (e) => {
+    if (e.target.tagName !== "BUTTON" && !e.target.closest(".skin-item")) {
+      onPointerDown(e.clientX, e.clientY);
+    }
+  });
+  window.addEventListener("mousemove", (e) => onPointerMove(e.clientX, e.clientY));
+  window.addEventListener("mouseup", () => onPointerUp());
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft"  || e.key === "a" || e.key === "A") { keys.left = true; dismissHint(); }
+    if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") { keys.right = true; dismissHint(); }
+    if (e.key === "ArrowUp"    || e.key === "w" || e.key === "W") { keys.up = true; dismissHint(); e.preventDefault(); }
+    if (e.key === "ArrowDown"  || e.key === "s" || e.key === "S") { keys.down = true; dismissHint(); e.preventDefault(); }
+  });
+  window.addEventListener("keyup", (e) => {
+    if (e.key === "ArrowLeft"  || e.key === "a" || e.key === "A") keys.left = false;
+    if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") keys.right = false;
+    if (e.key === "ArrowUp"    || e.key === "w" || e.key === "W") keys.up = false;
+    if (e.key === "ArrowDown"  || e.key === "s" || e.key === "S") keys.down = false;
+  });
+
+  // Tab visibility auto-pause
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      gamePausedByTab = true;
+      Sound.setRollSound(false, 0, 1);
+      if (typeof window.gamePaused === "function") window.gamePaused();
+    } else {
+      gamePausedByTab = false;
+      lastFrameTime = performance.now();
+      if (typeof window.gameResumed === "function") window.gameResumed();
+    }
+  });
+
+  // ==========================================================================
+  // UI CONTROLLERS
+  // ==========================================================================
+  const elHud = document.getElementById("hud");
+  const elHudLevel = document.getElementById("hud-level");
+  const elHudCoins = document.getElementById("hud-coins");
+  const elProgressBar = document.getElementById("progress-bar");
+  const elHint = document.getElementById("first-play-hint");
+
+  const elTitleScreen = document.getElementById("title-screen");
+  const elTitleBest = document.getElementById("title-best");
+  const elHowtoScreen = document.getElementById("howto-screen");
+  const elGameoverScreen = document.getElementById("gameover-screen");
+  const elGameoverSub = document.getElementById("gameover-sub");
+  const elVictoryScreen = document.getElementById("victory-screen");
+  const elVictoryTitle = document.getElementById("victory-title");
+  const elShopCoins = document.getElementById("shop-coins");
+  const elSkinGrid = document.getElementById("skin-grid");
+
+  const btnPlay = document.getElementById("btn-play");
+  const btnSound = document.getElementById("btn-sound");
+  const btnHowto = document.getElementById("btn-howto");
+  const btnHowtoBack = document.getElementById("btn-howto-back");
+  const btnRetry = document.getElementById("btn-retry");
+  const btnNextLevel = document.getElementById("btn-next-level");
+  const btnHudMute = document.getElementById("hud-mute-btn");
+
+  function refreshMuteUI() {
+    btnSound.textContent = saveData.muted ? "SOUND: OFF" : "SOUND: ON";
+    btnHudMute.textContent = saveData.muted ? "🔇" : "🔊";
+  }
+
+  function updateTitleUI() {
+    elTitleBest.textContent = `BEST: STAGE ${saveData.bestLevel} • CASH: $${saveData.coins}`;
+    refreshMuteUI();
+  }
+
+  function dismissHint() {
+    if (!saveData.seenHint) {
+      saveData.seenHint = true;
+      elHint.classList.add("hidden");
+      writeSave();
+    }
+  }
+
+  function startRun(levelNum) {
+    Sound.init();
+    saveData.currentLevel = levelNum;
+    buildLevel(levelNum);
+
+    ball.x = 0;
+    ball.y = BALL_RADIUS;
+    ball.z = 0;
+    ball.vx = 0;
+    ball.vy = 0;
+    ball.speedMultiplier = 1.0;
+    ball.currentSpeed = ball.baseSpeed;
+    ball.rollAngle = 0;
+    ball.squashY = 1;
+    ball.squashXZ = 1;
+    ball.supported = true;
+    targetSteerX = 0;
+    touchSpeedRatio = 1.0;
+
+    for (let i = 0; i < TRAIL_LEN; i++) {
+      trail[i].x = 0;
+      trail[i].y = BALL_RADIUS;
+      trail[i].z = 0;
+      trail[i].active = false;
+    }
+
+    elTitleScreen.classList.add("hidden");
+    elHowtoScreen.classList.add("hidden");
+    elGameoverScreen.classList.add("hidden");
+    elVictoryScreen.classList.add("hidden");
+    elHud.classList.remove("hidden");
+
+    if (!saveData.seenHint) {
+      elHint.classList.remove("hidden");
+    } else {
+      elHint.classList.add("hidden");
+    }
+
+    elHudLevel.textContent = `STAGE ${levelNum}`;
+    elHudCoins.textContent = saveData.coins;
+    elProgressBar.style.width = "0%";
+
+    gameState = "PLAYING";
+    if (typeof window.gameStarted === "function") window.gameStarted(levelNum);
+  }
+
+  function triggerGameOver() {
+    gameState = "GAMEOVER";
+    Sound.setRollSound(false, 0, 1);
+    shakeTime = 0.4;
+    const pct = Math.min(99, Math.max(1, Math.floor((Math.abs(ball.z) / Math.abs(finishZ)) * 100)));
+    elGameoverSub.textContent = `DERAILED AT ${pct}% OF STAGE ${saveData.currentLevel}`;
+    elGameoverScreen.classList.remove("hidden");
+    if (typeof window.gameStopped === "function") {
+      window.gameStopped("fall", saveData.currentLevel, saveData.coins);
+    }
+  }
+
+  function triggerVictory() {
+    gameState = "VICTORY";
+    Sound.setRollSound(false, 0, 1);
+    Sound.win();
+    spawnParticles(ball.x, ball.y + 0.5, ball.z, 30, [0.0, 0.95, 1.0], 6.5);
+
+    const clearedLvl = saveData.currentLevel;
+    saveData.currentLevel++;
+    if (saveData.currentLevel > saveData.bestLevel) {
+      saveData.bestLevel = saveData.currentLevel;
+    }
+    writeSave();
+
+    elVictoryTitle.textContent = `STAGE ${clearedLvl} CLEAR!`;
+    renderSkinShop();
+    elVictoryScreen.classList.remove("hidden");
+    if (typeof window.gameStopped === "function") {
+      window.gameStopped("victory", clearedLvl, saveData.coins);
+    }
+  }
+
+  function renderSkinShop() {
+    elShopCoins.textContent = `BANK: $${saveData.coins}`;
+    elSkinGrid.innerHTML = "";
+    SKINS.forEach((skin) => {
+      const unlocked = saveData.unlockedSkins.includes(skin.id);
+      const selected = saveData.selectedSkin === skin.id;
+      const div = document.createElement("div");
+      div.className = "skin-item" + (selected ? " selected" : "");
+
+      const preview = document.createElement("div");
+      preview.className = "skin-preview";
+      const rgb = skin.color.map(c => Math.floor(c * 255)).join(",");
+      preview.style.background = `rgb(${rgb})`;
+      preview.style.color = `rgb(${rgb})`;
+
+      const label = document.createElement("div");
+      if (selected) label.textContent = `${skin.name} ✓`;
+      else if (unlocked) label.textContent = skin.name;
+      else label.textContent = `${skin.name} ($${skin.price})`;
+
+      div.appendChild(preview);
+      div.appendChild(label);
+
+      div.addEventListener("click", () => {
+        Sound.init();
+        if (unlocked) {
+          saveData.selectedSkin = skin.id;
+          Sound.coin();
+          writeSave();
+          renderSkinShop();
+        } else if (saveData.coins >= skin.price) {
+          saveData.coins -= skin.price;
+          saveData.unlockedSkins.push(skin.id);
+          saveData.selectedSkin = skin.id;
+          elHudCoins.textContent = saveData.coins;
+          Sound.coin();
+          writeSave();
+          renderSkinShop();
+        } else {
+          Sound.bump();
+        }
+      });
+
+      elSkinGrid.appendChild(div);
+    });
+  }
+
+  btnPlay.addEventListener("click", () => startRun(saveData.currentLevel));
+  btnSound.addEventListener("click", () => {
+    Sound.init();
+    saveData.muted = !saveData.muted;
+    writeSave();
+    refreshMuteUI();
+  });
+  btnHudMute.addEventListener("click", () => {
+    Sound.init();
+    saveData.muted = !saveData.muted;
+    writeSave();
+    refreshMuteUI();
+  });
+  btnHowto.addEventListener("click", () => {
+    Sound.init();
+    elTitleScreen.classList.add("hidden");
+    elHowtoScreen.classList.remove("hidden");
+  });
+  btnHowtoBack.addEventListener("click", () => startRun(saveData.currentLevel));
+  btnRetry.addEventListener("click", () => startRun(saveData.currentLevel));
+  btnNextLevel.addEventListener("click", () => startRun(saveData.currentLevel));
+
+  updateTitleUI();
+
+  // ==========================================================================
+  // PHYSICS & GAMEPLAY UPDATE LOOP
+  // ==========================================================================
+  function updatePhysics(dt) {
+    globalTime += dt;
+    if (shakeTime > 0) shakeTime = Math.max(0, shakeTime - dt);
+
+    // Update particles
+    for (let i = 0; i < MAX_PARTICLES; i++) {
+      const p = particles[i];
+      if (p.active) {
+        p.life += dt;
+        if (p.life >= p.maxLife) {
+          p.active = false;
+        } else {
+          p.vy -= 14.0 * dt;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.z += p.vz * dt;
+        }
+      }
+    }
+
+    // Animate obstacles continuously
+    obstacles.forEach((ob) => {
+      if (ob.type === "barrier") {
+        ob.x = Math.sin(globalTime * ob.speed + ob.phase) * (ob.w * 0.32);
+      } else if (ob.type === "hammer") {
+        ob.angle = Math.sin(globalTime * ob.speed + ob.phase) * 1.05;
+      } else if (ob.type === "sweeper") {
+        ob.angle += ob.speed * dt;
+      }
+    });
+
+    if (gameState !== "PLAYING") return;
+
+    // 1. Horizontal Keyboard Steering
+    const keyDir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+    if (keyDir !== 0) {
+      targetSteerX += keyDir * 5.8 * dt;
+      targetSteerX = Math.max(-3.0, Math.min(3.0, targetSteerX));
+    }
+
+    // 2. Speed & Full-Stop Brake Control (Touch Vertical Drag + Keyboard Up/Down)
+    let desiredMultiplier = 1.0;
+    if (keys.down) {
+      desiredMultiplier = 0.0; // Full stop when holding Down / S
+    } else if (keys.up) {
+      desiredMultiplier = 1.6; // Boost up to 1.6x when holding Up / W
+    } else if (pointerDown) {
+      desiredMultiplier = touchSpeedRatio; // Smooth vertical drag speed control
+    }
+
+    const accelRate = (desiredMultiplier < ball.speedMultiplier) ? 9.5 : 6.5;
+    ball.speedMultiplier += (desiredMultiplier - ball.speedMultiplier) * Math.min(1.0, dt * accelRate);
+    if (desiredMultiplier === 0.0 && ball.speedMultiplier < 0.025) {
+      ball.speedMultiplier = 0.0; // Clean full stop
+    }
+    ball.currentSpeed = ball.baseSpeed * ball.speedMultiplier;
+
+    // 3. Smooth Lateral Steering & Forward Motion
+    const prevX = ball.x;
+    ball.x += (targetSteerX - ball.x) * Math.min(1, dt * 12.0);
+    ball.vx = (ball.x - prevX) / Math.max(0.001, dt);
+    ball.z -= ball.currentSpeed * dt;
+    ball.rollAngle -= (ball.currentSpeed * dt) / BALL_RADIUS;
+
+    // Update Neon Glow Trail behind ball
+    trailTimer += dt;
+    if (trailTimer >= 0.022) {
+      trailTimer = 0;
+      for (let i = TRAIL_LEN - 1; i > 0; i--) {
+        trail[i].x = trail[i - 1].x;
+        trail[i].y = trail[i - 1].y;
+        trail[i].z = trail[i - 1].z;
+        trail[i].active = trail[i - 1].active;
+      }
+      trail[0].x = ball.x;
+      trail[0].y = ball.y;
+      trail[0].z = ball.z;
+      trail[0].active = ball.currentSpeed > 0.8;
+    }
+
+    // Recover squash & stretch
+    ball.squashY += (1.0 - ball.squashY) * Math.min(1, dt * 10);
+    ball.squashXZ += (1.0 - ball.squashXZ) * Math.min(1, dt * 10);
+
+    // Check platform support under the ball
+    let groundY = -999;
+    let activePlat = null;
+    for (let i = 0; i < platforms.length; i++) {
+      const pl = platforms[i];
+      if (ball.z <= pl.zStart + 0.25 && ball.z >= pl.zEnd - 0.25) {
+        const halfW = pl.w * 0.5 + 0.14;
+        if (Math.abs(ball.x - pl.x) <= halfW) {
+          const t = (pl.zStart - ball.z) / Math.max(0.01, pl.zStart - pl.zEnd);
+          const py = pl.yStart + (pl.yEnd - pl.yStart) * Math.max(0, Math.min(1, t));
+          if (py > groundY) {
+            groundY = py;
+            activePlat = pl;
+          }
+        }
+      }
+    }
+
+    // Gravity & Ramp Launch
+    const wasSupported = ball.supported;
+    if (groundY > -100 && ball.y >= groundY + BALL_RADIUS - 0.35 && ball.vy <= 0.5) {
+      ball.y = groundY + BALL_RADIUS;
+      if (activePlat && activePlat.isRamp && ball.currentSpeed > 2.0) {
+        const slope = (activePlat.yEnd - activePlat.yStart) / (activePlat.zStart - activePlat.zEnd);
+        ball.vy = Math.max(ball.currentSpeed, ball.baseSpeed * 0.92) * slope * 1.18;
+      } else {
+        if (!wasSupported && ball.vy < -2.0) {
+          ball.squashY = 0.72;
+          ball.squashXZ = 1.18;
+          Sound.bump();
+        }
+        ball.vy = 0;
+      }
+      ball.supported = true;
+      ball.shadowY = groundY + 0.02;
+    } else {
+      ball.supported = false;
+      ball.vy -= 25.0 * dt;
+      ball.y += ball.vy * dt;
+      ball.shadowY = groundY > -100 ? groundY + 0.02 : -999;
+    }
+
+    Sound.setRollSound(ball.supported, ball.currentSpeed, ball.baseSpeed);
+
+    // Check Dollar Sign ($) Pickups
+    for (let i = 0; i < coins.length; i++) {
+      const c = coins[i];
+      if (!c.taken && Math.abs(ball.z - c.z) < 0.78 && Math.abs(ball.x - c.x) < 0.78 && Math.abs(ball.y - c.y) < 0.95) {
+        c.taken = true;
+        saveData.coins++;
+        elHudCoins.textContent = saveData.coins;
+        Sound.coin();
+        spawnParticles(c.x, c.y, c.z, 10, [1.0, 0.92, 0.15], 4.4);
+      }
+    }
+
+    // Check Neon Obstacles
+    for (let i = 0; i < obstacles.length; i++) {
+      const ob = obstacles[i];
+      if (Math.abs(ball.z - ob.z) < 0.75 && ball.y < 1.65) {
+        if (ob.type === "barrier") {
+          if (Math.abs(ball.x - ob.x) < 0.82) {
+            knockBallSideways(ball.x >= ob.x ? 1 : -1);
+          }
+        } else if (ob.type === "hammer") {
+          const bobX = Math.sin(ob.angle) * 2.4;
+          const bobY = 3.1 - Math.cos(ob.angle) * 2.4;
+          if (Math.hypot(ball.x - bobX, ball.y - bobY) < 0.9) {
+            knockBallSideways(Math.cos(ob.angle) >= 0 ? 1 : -1);
+          }
+        } else if (ob.type === "sweeper") {
+          const barHalfLen = ob.w * 0.44;
+          const dx = Math.cos(ob.angle);
+          const dz = Math.sin(ob.angle);
+          const rx = ball.x;
+          const rz = ball.z - ob.z;
+          const proj = Math.max(-barHalfLen, Math.min(barHalfLen, rx * dx + rz * dz));
+          const cx = dx * proj;
+          const cz = dz * proj;
+          if (Math.hypot(rx - cx, rz - cz) < 0.62 && ball.y < 1.1) {
+            knockBallSideways(ball.x >= 0 ? 1 : -1);
+          }
+        }
+      }
+    }
+
+    // Progress HUD
+    const pct = Math.min(100, Math.max(0, (Math.abs(ball.z) / Math.abs(finishZ)) * 100));
+    elProgressBar.style.width = pct.toFixed(1) + "%";
+
+    // Check Victory Gate
+    if (ball.z <= finishZ && ball.y > -0.5) {
+      triggerVictory();
+      return;
+    }
+
+    // Check Sky Fall ("WIPED OUT!")
+    if (ball.y < -3.2) {
+      Sound.wipeout();
+      spawnParticles(ball.x, ball.y, ball.z, 26, [1.0, 0.05, 0.55], 5.8);
+      triggerGameOver();
+    }
+  }
+
+  function knockBallSideways(dir) {
+    Sound.bump();
+    shakeTime = 0.25;
+    targetSteerX += dir * 2.4;
+    ball.x += dir * 0.65;
+    ball.vy = 3.2;
+    ball.squashY = 1.25;
+    ball.squashXZ = 0.82;
+    spawnParticles(ball.x, ball.y, ball.z, 14, [1.0, 0.08, 0.55], 5.2);
+  }
+
+  // ==========================================================================
+  // 3D CYBERPUNK SCENE RENDERER
+  // ==========================================================================
+  function renderScene() {
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = Math.floor(canvas.clientWidth * dpr);
+    const h = Math.floor(canvas.clientHeight * dpr);
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+      gl.viewport(0, 0, w, h);
+    }
+
+    // Deep dark indigo/near-black night sky
+    gl.clearColor(0.025, 0.012, 0.075, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    const aspect = w / Math.max(1, h);
+    m4.perspective(matProj, 55 * Math.PI / 180, aspect, 0.5, 175.0);
+
+    let sx = 0, sy = 0;
+    if (shakeTime > 0) {
+      sx = (Math.random() - 0.5) * 0.45;
+      sy = (Math.random() - 0.5) * 0.45;
+    }
+
+    const camX = ball.x * 0.45 + sx;
+    const camY = Math.max(2.6, ball.y * 0.5 + 3.6) + sy;
+    const camZ = ball.z + 6.8;
+
+    m4.lookAt(
+      matView,
+      [camX, camY, camZ],
+      [ball.x * 0.3, Math.max(-0.5, ball.y * 0.35 + 0.4), ball.z - 5.5],
+      [0, 1, 0]
+    );
+    m4.multiply(matVP, matProj, matView);
+    gl.uniformMatrix4fv(uVP, false, matVP);
+    gl.uniform1f(uTime, globalTime);
+
+    // 1. Huge Glowing Retrowave Sun Low on the Horizon + Outer Halo
+    drawMesh(meshSphere, 0, 11.5, ball.z - 148, 0, 0, 0, 44.0, 44.0, 1.5, [1.0, 0.1, 0.5], 4);
+    drawMesh(meshSphere, 0, 11.5, ball.z - 145, 0, 0, 0, 39.0, 39.0, 2.0, [1.0, 0.5, 0.2], 5);
+
+    // 2. Twinkling Night Sky Stars
+    stars.forEach((st) => {
+      drawMesh(meshCube, st.x, st.y, ball.z + st.zOffset, 0, 0, 0, st.size, st.size, st.size, st.color, 4);
+    });
+
+    // 3. Neon Synthwave Grid Plane Far Below Track
+    drawMesh(meshCube, 0, -18.0, ball.z - 55, 0, 0, 0, 220, 0.2, 220, [0.0, 0.85, 1.0], 2);
+
+    // 4. Distant Cyberpunk City Silhouette with Lit Windows
+    buildings.forEach((b) => {
+      if (b.z > ball.z + 18 || b.z < ball.z - 145) return;
+      drawMesh(meshCube, b.x, b.y, b.z, 0, 0, 0, b.w, b.h, b.d, b.tint, 6);
+      // Glowing rooftop beacon strip
+      drawMesh(meshCube, b.x, b.y + b.h * 0.5 + 0.08, b.z, 0, 0, 0, b.w * 0.92, 0.15, b.d * 0.92, b.tint, 4);
+    });
+
+    // 5. Dark Cyber Track Panels with Magenta (Left) & Cyan (Right) Neon Edge Strips
+    platforms.forEach((pl) => {
+      if (pl.zEnd > ball.z + 12 || pl.zStart < ball.z - 130) return;
+      const len = pl.zStart - pl.zEnd;
+      const zMid = (pl.zStart + pl.zEnd) * 0.5;
+      const yMid = (pl.yStart + pl.yEnd) * 0.5;
+      const pitch = Math.atan2(pl.yEnd - pl.yStart, len);
+
+      // Dark metallic deck panel
+      drawMesh(meshCube, pl.x, yMid - 0.16, zMid, pitch, 0, 0, pl.w, 0.30, len, [0.09, 0.07, 0.19], 0);
+
+      // Left Glowing Magenta Edge Strip & Right Glowing Cyan Edge Strip
+      drawMesh(meshCube, pl.x - pl.w * 0.485, yMid - 0.06, zMid, pitch, 0, 0, 0.15, 0.36, len, [1.0, 0.0, 0.65], 4);
+      drawMesh(meshCube, pl.x + pl.w * 0.485, yMid - 0.06, zMid, pitch, 0, 0, 0.15, 0.36, len, [0.0, 0.95, 1.0], 4);
+
+      // Transverse neon circuit seams
+      if (!pl.isRamp) {
+        for (let pz = pl.zStart - 2.0; pz > pl.zEnd + 0.5; pz -= 2.5) {
+          drawMesh(meshCube, pl.x, yMid + 0.005, pz, 0, 0, 0, pl.w * 0.92, 0.02, 0.07, [0.22, 0.14, 0.44], 4);
+        }
+      }
+
+      // Elevated Laser Guardrails on safe breather sections
+      if (pl.rails) {
+        const lx = pl.x - pl.w * 0.47;
+        const rx = pl.x + pl.w * 0.47;
+        for (let pz = pl.zStart - 1.2; pz >= pl.zEnd + 0.5; pz -= 6.0) {
+          drawMesh(meshCyl, lx, 0.42, pz, 0, 0, 0, 0.14, 0.85, 0.14, [0.2, 0.15, 0.35], 0);
+          drawMesh(meshCyl, rx, 0.42, pz, 0, 0, 0, 0.14, 0.85, 0.14, [0.2, 0.15, 0.35], 0);
+        }
+        drawMesh(meshCube, lx, 0.72, zMid, 0, 0, 0, 0.06, 0.06, len - 2.0, [1.0, 0.1, 0.75], 4);
+        drawMesh(meshCube, rx, 0.72, zMid, 0, 0, 0, 0.06, 0.06, len - 2.0, [0.0, 0.95, 1.0], 4);
+      }
+    });
+
+    // 6. Checkered Neon Finish Gate
+    if (finishZ > ball.z - 135) {
+      drawMesh(meshCyl, -1.8, 1.6, finishZ, 0, 0, 0, 0.30, 3.2, 0.30, [1.0, 0.0, 0.65], 4);
+      drawMesh(meshCyl,  1.8, 1.6, finishZ, 0, 0, 0, 0.30, 3.2, 0.30, [0.0, 0.95, 1.0], 4);
+      drawMesh(meshCube, 0, 2.85, finishZ, 0, 0, 0, 4.0, 0.85, 0.32, [1, 1, 1], 3);
+    }
+
+    // 7. Glowing Neon Obstacles (Red/Magenta Barriers, Cyber Hammers, Laser Sweepers)
+    obstacles.forEach((ob) => {
+      if (ob.z > ball.z + 10 || ob.z < ball.z - 120) return;
+      if (ob.type === "barrier") {
+        drawMesh(meshCyl, ob.x, 0.02, ob.z, 0, 0, 0, 1.35, 0.02, 0.65, [0.45, 0.0, 0.25], 4);
+        drawMesh(meshCube, ob.x, 0.5, ob.z, 0, 0, 0, 1.25, 0.95, 0.52, [0.16, 0.04, 0.22], 0);
+        drawMesh(meshCube, ob.x, 0.5, ob.z, 0, 0, 0, 1.30, 0.22, 0.56, [1.0, 0.05, 0.45], 4);
+        drawMesh(meshCube, ob.x, 0.5, ob.z, 0, 0, 0, 0.95, 0.68, 0.58, [1.0, 0.0, 0.55], 4);
+      } else if (ob.type === "hammer") {
+        // Cyber gantry arch
+        drawMesh(meshCyl, -1.9, 1.6, ob.z, 0, 0, 0, 0.22, 3.2, 0.22, [0.15, 0.1, 0.3], 0);
+        drawMesh(meshCyl,  1.9, 1.6, ob.z, 0, 0, 0, 0.22, 3.2, 0.22, [0.15, 0.1, 0.3], 0);
+        drawMesh(meshCube, 0, 3.15, ob.z, 0, 0, 0, 4.1, 0.25, 0.25, [1.0, 0.0, 0.65], 4);
+        // Laser pendulum arm & glowing neon plasma hammer head
+        const bobX = Math.sin(ob.angle) * 2.4;
+        const bobY = 3.1 - Math.cos(ob.angle) * 2.4;
+        drawMesh(meshCube, bobX * 0.5, (3.1 + bobY) * 0.5, ob.z, 0, 0, ob.angle, 0.10, 2.4, 0.10, [0.0, 0.95, 1.0], 4);
+        drawMesh(meshCyl, bobX, bobY, ob.z, Math.PI * 0.5, 0, 0, 0.88, 0.95, 0.88, [1.0, 0.05, 0.45], 4);
+      } else if (ob.type === "sweeper") {
+        // Center turret & rotating neon laser beam
+        drawMesh(meshCyl, 0, 0.45, ob.z, 0, 0, 0, 0.58, 0.9, 0.58, [0.15, 0.08, 0.28], 0);
+        drawMesh(meshCyl, 0, 0.92, ob.z, 0, 0, 0, 0.42, 0.12, 0.42, [0.0, 0.95, 1.0], 4);
+        drawMesh(meshCube, 0, 0.45, ob.z, 0, -ob.angle, 0, ob.w * 0.88, 0.24, 0.24, [1.0, 0.04, 0.5], 4);
+      }
+    });
+
+    // 8. Spinning Golden Glowing 3D Dollar Sign ($) Pickups
+    coins.forEach((c) => {
+      if (c.taken || c.z > ball.z + 8 || c.z < ball.z - 105) return;
+      const bob = Math.sin(globalTime * 4.5 + c.z) * 0.08;
+      // Soft golden neon floor glow
+      drawMesh(meshCyl, c.x, 0.02, c.z, 0, 0, 0, 0.48, 0.02, 0.48, [0.55, 0.42, 0.0], 4);
+      // 3D Dollar Sign ($) mesh spinning around Y
+      drawMesh(meshDollar, c.x, c.y + bob, c.z, 0, globalTime * 3.2 + c.z * 0.5, 0, 0.72, 0.72, 0.72, [1.0, 0.88, 0.08], 4);
+    });
+
+    // 9. Subtle Neon Glow Trail Behind the Player Ball
+    const skinCol = SKINS[saveData.selectedSkin] ? SKINS[saveData.selectedSkin].color : SKINS[0].color;
+    for (let i = 1; i < TRAIL_LEN; i++) {
+      const tr = trail[i];
+      if (tr.active) {
+        const fade = 1.0 - (i / TRAIL_LEN);
+        const r = BALL_RADIUS * 0.55 * fade;
+        const trailCol = [skinCol[0] * fade, skinCol[1] * fade, skinCol[2] * fade];
+        drawMesh(meshSphere, tr.x, tr.y - 0.05, tr.z, 0, 0, 0, r, r * 0.5, r, trailCol, 4);
+      }
+    }
+
+    // 10. Player Ball & Neon Under-Glow Shadow
+    if (ball.shadowY > -50 && ball.y >= ball.shadowY) {
+      const sScale = Math.max(0.25, 0.92 - (ball.y - ball.shadowY) * 0.18);
+      drawMesh(meshCyl, ball.x, ball.shadowY, ball.z, 0, 0, 0, sScale, 0.02, sScale, [skinCol[0]*0.45, skinCol[1]*0.45, skinCol[2]*0.45], 4);
+    }
+
+    drawMesh(
+      meshSphere,
+      ball.x, ball.y, ball.z,
+      ball.rollAngle, 0, -ball.vx * 0.08,
+      BALL_RADIUS * ball.squashXZ,
+      BALL_RADIUS * ball.squashY,
+      BALL_RADIUS * ball.squashXZ,
+      skinCol,
+      1
+    );
+
+    // 11. Emissive Neon Spark Particles
+    for (let i = 0; i < MAX_PARTICLES; i++) {
+      const p = particles[i];
+      if (p.active) {
+        const s = p.size * (1.0 - p.life / p.maxLife);
+        drawMesh(meshCube, p.x, p.y, p.z, p.life * 6, p.life * 4, 0, s, s, s, p.color, 4);
+      }
+    }
+  }
+
+  // ==========================================================================
+  // MAIN REQUESTANIMATIONFRAME LOOP WITH CLAMPED DELTA
+  // ==========================================================================
+  let lastFrameTime = performance.now();
+  buildLevel(saveData.currentLevel);
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (gamePausedByTab) return;
+
+    const dt = Math.min(0.05, Math.max(0.001, (now - lastFrameTime) * 0.001));
+    lastFrameTime = now;
+
+    updatePhysics(dt);
+    renderScene();
+  }
+
+  if (typeof window.gameLoaded === "function") window.gameLoaded();
+  requestAnimationFrame(frame);
+})();
+</script>
+
+    <!-- ================================================================== -->
+    <!-- PLAYGAMA BRIDGE SDK WIRING (additive only; game code above is      -->
+    <!-- identical to the live tested build)                                 -->
+    <!-- ================================================================== -->
+    <script>
+    (function () {
+      "use strict";
+      function init() {
+        if (!window.bridge || typeof window.bridge.initialize !== "function") return; // SDK unavailable: run vanilla
+        window.bridge.initialize().then(function () {
+          try { window.bridge.platform.sendMessage("game_ready"); } catch (e) {}
+          // Audio/mute hooks: silence the game when the platform asks (ads, background).
+          var weMuted = false;
+          function soundBtn() { return document.getElementById("btn-sound"); }
+          function isMuted() { var b = soundBtn(); return !!b && b.textContent.indexOf("OFF") !== -1; }
+          function applyPlatformAudio(enabled) {
+            var b = soundBtn(); if (!b) return;
+            if (!enabled && !isMuted()) { b.click(); weMuted = true; }
+            else if (enabled && weMuted && isMuted()) { b.click(); weMuted = false; }
+          }
+          try { applyPlatformAudio(!!window.bridge.platform.isAudioEnabled); } catch (e) {}
+          try {
+            window.bridge.platform.on(window.bridge.EVENT_NAME.AUDIO_STATE_CHANGED, function (enabled) { applyPlatformAudio(!!enabled); });
+          } catch (e) {}
+          // Pause-state: sim is already static on game over and the game auto-pauses on tab switch.
+          try {
+            window.bridge.platform.on(window.bridge.EVENT_NAME.PAUSE_STATE_CHANGED, function () {});
+          } catch (e) {}
+          // Interstitial at game over, via the game's documented SDK adapter hook.
+          var origStopped = window.gameStopped;
+          window.gameStopped = function (reason, level, coins) {
+            if (typeof origStopped === "function") { try { origStopped(reason, level, coins); } catch (e) {} }
+            if (reason === "fall") {
+              try {
+                if (window.bridge.advertisement && window.bridge.advertisement.isInterstitialSupported) {
+                  var p = window.bridge.advertisement.showInterstitial();
+                  if (p && typeof p.catch === "function") p.catch(function () {});
+                }
+              } catch (e) {}
+            }
+          };
+        }).catch(function () { /* Bridge init failed: run vanilla */ });
+      }
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+      else init();
+    })();
+    </script>
+</body>
+  </html>
