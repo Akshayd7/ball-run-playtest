@@ -812,7 +812,8 @@ function updateHUD() {
   var h = '';
   for (var i = 0; i < 3; i++) h += HEART_SVG.replace('FILL', i < G.hearts ? '#ff5a6e' : 'rgba(255,255,255,.18)');
   heartsEl.innerHTML = h;
-  waveEl.textContent = 'ROUND ' + Math.max(1, G.wave) + ' \u00b7 ' + (G.spawnQueue + zombies.length) + ' LEFT';
+  if (G.mode === 'playing' && G.spawnQueue + zombies.length === 0) waveEl.textContent = G.wave === 0 ? 'GET READY' : 'ROUND CLEAR';
+  else waveEl.textContent = 'ROUND ' + Math.max(1, G.wave) + ' \u00b7 ' + (G.spawnQueue + zombies.length) + ' LEFT';
   ammoEl.textContent = G.reloading > 0 ? 'RELOADING' : WTYPES[G.weapon].name + ' ' + G.ammo + ' / ∞';
   ammoEl.className = G.reloading > 0 ? 'reloading' : '';
   ammoEl.id = 'ammo-pill';
