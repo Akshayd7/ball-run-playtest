@@ -194,12 +194,37 @@ var SoundEngine = (function () {
     src.connect(f); f.connect(g); g.connect(master);
     src.start(t);
   }
+  var musicTimer = null, musicStep = 0;
+  var MBASS = [55, 55, 65.41, 55, 55, 49, 58.27, 65.41];        // A A C A A G Bb C
+  var MLEAD = [220, 0, 0, 261.63, 0, 246.94, 0, 0, 220, 0, 164.81, 0, 196, 0, 207.65, 0];
+  function musicTick() {
+    if (muted || !ctx) return;
+    var b = MBASS[musicStep % MBASS.length];
+    tone(b, b, 0.22, 'triangle', 0.16);
+    var l = MLEAD[musicStep % MLEAD.length];
+    if (l) tone(l, l, 0.18, 'sine', 0.12);
+    if (musicStep % 4 === 2) noise(0.04, 0.05, 6000);          // soft tick hat
+    musicStep++;
+  }
   return {
     unlock: function () { if (ensure()) resume(); },
+    musicStart: function () {
+      if (!ensure() || musicTimer) return;
+      resume(); musicStep = 0;
+      musicTimer = setInterval(musicTick, 240);
+    },
+    musicStop: function () { if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } },
     setMuted: function (m) { muted = m; try { localStorage.setItem('gzap_muted', m ? '1' : '0'); } catch (e) {} },
     toggle: function () { this.setMuted(!muted); return muted; },
     isMuted: function () { return muted; },
-    shoot: function () { noise(0.12, 0.5, 2600); tone(220, 60, 0.14, 'square', 0.35); },
+    shoot: function (kind) {
+      if (kind === 'rifle') { noise(0.09, 0.42, 3200); tone(330, 90, 0.1, 'square', 0.3); }
+      else if (kind === 'shotgun') { noise(0.3, 0.7, 1100); tone(140, 40, 0.28, 'square', 0.45); tone(70, 35, 0.3, 'triangle', 0.4, 0.02); }
+      else { noise(0.12, 0.5, 2600); tone(220, 60, 0.14, 'square', 0.35); }
+    },
+    powerup: function () { tone(523, 523, 0.09, 'square', 0.25); tone(659, 659, 0.09, 'square', 0.25, 0.09); tone(880, 1046, 0.16, 'square', 0.28, 0.18); },
+    buy: function () { tone(660, 660, 0.08, 'triangle', 0.28); tone(880, 880, 0.14, 'triangle', 0.3, 0.09); },
+    thunder: function () { noise(1.1, 0.55, 160); tone(55, 30, 0.9, 'triangle', 0.22); },
     dryfire: function () { tone(1200, 900, 0.05, 'square', 0.15); },
     reload: function () { tone(500, 300, 0.07, 'square', 0.2); tone(700, 500, 0.07, 'square', 0.2, 0.5); },
     zhit: function () { tone(300, 120, 0.09, 'sawtooth', 0.25); },
@@ -222,7 +247,7 @@ var obstacles = [];         // {x,z,r} collision circles
 var zombies = [];           // live zombie objects
 var particles = [];         // poof particles
 var weapon = null, muzzle = null, weaponBaseY = 0, recoil = 0;
-var gunGroups = {}, muzzles = {}, hemi = null, bolt = null, boltT = 0, nextBolt = 6;
+var gunGroups = {}, muzzles = {}, hemi = null, bolt = null, boltT = 0, nextBolt = 6, nextGrowl = 4;
 var camShake = 0;
 
 function makeCanvasTex(sz, drawFn, repX, repY) {
@@ -595,7 +620,7 @@ function applyDrop(t) {
   if (t === 'insta') G.instaT = 10;
   else if (t === 'maxammo') G.ammo = G.clip;
   else G.doubleT = 15;
-  showBanner(DTYPES[t].label); SoundEngine.heal(); updateHUD();
+  showBanner(DTYPES[t].label); SoundEngine.powerup(); updateHUD();
 }
 function makeStation(x, z, wkey) {
   var g = new THREE.Group();
@@ -652,7 +677,7 @@ function buySwap() {
   G.score -= w.price;
   G.weapon = nearStation.w; G.clip = w.clip; G.ammo = w.clip; G.reloading = 0;
   equipGun(G.weapon);
-  showBanner(w.name + '!'); SoundEngine.heal(); updateHUD();
+  showBanner(w.name + '!'); SoundEngine.buy(); updateHUD();
 }
 
 /* ============ game state ============ */
@@ -714,7 +739,7 @@ function fire() {
   var w = WTYPES[G.weapon];
   if (G.ammo <= 0) { SoundEngine.dryfire(); startReload(); return; }
   G.ammo--; G.fireCd = w.cd; recoil = 1; camShake = Math.max(camShake, w.kick);
-  SoundEngine.shoot();
+  SoundEngine.shoot(G.weapon);
   muzzle.visible = true; muzzle.material.rotation = Math.random() * 6.28;
   muzzle.scale.setScalar(0.8 + Math.random() * 0.5);
   setTimeout(function () { muzzle.visible = false; }, 55);
@@ -1078,6 +1103,7 @@ function startGame() {
   SoundEngine.unlock(); SoundEngine.click();
   resetGame();
   G.mode = 'playing';
+  SoundEngine.musicStart();
   el('menu').classList.add('hidden');
   el('gameover').classList.add('hidden');
   el('pause').classList.add('hidden');
@@ -1101,7 +1127,7 @@ function gameOver() {
     'Brutes take many hits - zap them early from far away!'];
   el('over-tip').textContent = tips[(Math.random() * tips.length) | 0];
   el('gameover').classList.remove('hidden');
-  SoundEngine.over();
+  SoundEngine.musicStop(); SoundEngine.over();
   PG.levelFailed(); PG.interstitial();
   updateHUD();
 }
@@ -1204,6 +1230,10 @@ function loop() {
     if (t > nextBolt) {
       bolt.visible = true; hemi.intensity = 2.1; boltT = t;
       bolt.position.x = Math.random() * 70 - 35; nextBolt = t + 6 + Math.random() * 9;
+      SoundEngine.thunder();
+    }
+    if (t > nextGrowl && zombies.length > 0) {
+      SoundEngine.growl(); nextGrowl = t + 2.5 + Math.random() * 4;
     }
     if (bolt.visible && t - boltT > 0.14) { bolt.visible = false; hemi.intensity = 0.95; }
     var powTxt = '';
