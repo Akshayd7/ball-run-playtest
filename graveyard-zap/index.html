@@ -121,7 +121,7 @@
   <div class="card">
     <h1>GRAVEYARD ZAP</h1>
     <p style="color:#ff9f68; font-weight:800; letter-spacing:2px; font-size:14px;">FIRST-PERSON ZOMBIE SURVIVAL</p>
-    <p>The dead are rising in the old graveyard.<br>
+    <p>The dead are rising in the old town.<br>
     Move with the left pad, drag the right side to look, and drop every zombie.<br>
     Earn points per hit, swap for bigger weapons at the glowing crates,<br>and grab power-up crystals!</p>
     <p class="best" id="menu-best"></p>
@@ -222,6 +222,7 @@ var obstacles = [];         // {x,z,r} collision circles
 var zombies = [];           // live zombie objects
 var particles = [];         // poof particles
 var weapon = null, muzzle = null, weaponBaseY = 0, recoil = 0;
+var gunGroups = {}, muzzles = {}, hemi = null, bolt = null, boltT = 0, nextBolt = 6;
 var camShake = 0;
 
 function makeCanvasTex(sz, drawFn, repX, repY) {
@@ -269,22 +270,22 @@ function buildWorld() {
   starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
   scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xfff7d6, size: 0.55, fog: false })));
 
-  // ground: bright cartoon grass with patches
+  // ground: cartoon cobblestone street
   var grassTex = makeCanvasTex(256, function (g, s) {
-    g.fillStyle = '#4fbf5e'; g.fillRect(0, 0, s, s);
-    for (var i = 0; i < 90; i++) {
-      g.fillStyle = ['#45ad54', '#5bcc69', '#3f9f4e', '#66d475'][i % 4];
-      var x = Math.random() * s, y = Math.random() * s, r = 4 + Math.random() * 14;
+    g.fillStyle = '#7d78b0'; g.fillRect(0, 0, s, s);
+    for (var i = 0; i < 130; i++) {
+      g.fillStyle = ['#8d88c4', '#6e69a0', '#9a94d0', '#625d94'][i % 4];
+      var x = Math.random() * s, y = Math.random() * s, r = 5 + Math.random() * 13;
       g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
     }
-    g.fillStyle = '#8a6b4a';
-    for (var j = 0; j < 10; j++) { g.beginPath(); g.arc(Math.random() * s, Math.random() * s, 3 + Math.random() * 6, 0, 7); g.fill(); }
+    g.fillStyle = '#5a9a6a';
+    for (var j = 0; j < 12; j++) { g.beginPath(); g.arc(Math.random() * s, Math.random() * s, 2 + Math.random() * 5, 0, 7); g.fill(); }
   }, 9, 9);
   var ground = new THREE.Mesh(new THREE.PlaneGeometry(ARENA * 2 + 14, ARENA * 2 + 14),
     new THREE.MeshLambertMaterial({ map: grassTex }));
   ground.rotation.x = -Math.PI / 2; scene.add(ground);
 
-  scene.add(new THREE.HemisphereLight(0xb39dff, 0x4a7c4a, 0.95));
+  hemi = new THREE.HemisphereLight(0xb39dff, 0x4a5a7a, 0.95); scene.add(hemi);
   var sun = new THREE.DirectionalLight(0xffd9a8, 0.75);
   sun.position.set(-14, 22, -10); scene.add(sun);
 
@@ -365,42 +366,138 @@ function buildWorld() {
     stem.position.y = 0.72; g.add(stem);
     g.position.set(x, 0, z); scene.add(g); obstacles.push({ x: x, z: z, r: 0.45 });
   }
-  crypt(-11, -12); crypt(11.5, -11); crypt(0, 14.5);
-  tombstone(-6, -6); tombstone(6.5, -5, true); tombstone(-13, 2); tombstone(13, 3);
-  tombstone(-5, 8, true); tombstone(7, 9); tombstone(1, -14); tombstone(-9, -15);
-  deadTree(-15, -8); deadTree(15, -4); deadTree(-3, 12); deadTree(10, 14); deadTree(3, -9);
-  pumpkin(-8, -10.5); pumpkin(8.6, -12); pumpkin(12, 8); pumpkin(-12, 10); pumpkin(4, 4);
-  fireBarrel(-5, -2); fireBarrel(6, -3.5); fireBarrel(0.5, 10.5);
-  barricade(3.5, -6.5, 0.5); barricade(-4.5, 5.5, -0.4);
-  makeStation(-8.5, -10, 'rifle'); makeStation(9, -9, 'shotgun');
+  // gothic cartoon town: buildings line the streets, lanes channel the horde
+  var townCols = [0x6a4a9a, 0x4a5a9a, 0x8a4a7a, 0x5a6aaa, 0x7a5a8a];
+  var roofCols = [0x2c1a4a, 0x2a4a5a, 0x3a2a5a];
+  function building(x, z, w, d, h, ry, ci) {
+    var g = new THREE.Group();
+    var body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d),
+      new THREE.MeshLambertMaterial({ color: townCols[ci % townCols.length] }));
+    body.position.y = h / 2; g.add(body);
+    var roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.76, h * 0.5, 4),
+      new THREE.MeshLambertMaterial({ color: roofCols[ci % roofCols.length] }));
+    roof.position.y = h + h * 0.24; roof.rotation.y = Math.PI / 4;
+    roof.scale.set(w / Math.max(w, d), 1, d / Math.max(w, d)); g.add(roof);
+    var winGeo = new THREE.PlaneGeometry(0.55, 0.8);
+    var winMats = [new THREE.MeshBasicMaterial({ color: 0xffd166 }), new THREE.MeshBasicMaterial({ color: 0x7df9ff })];
+    var wc = Math.max(2, Math.round(w / 1.5)), wr = Math.max(2, Math.floor(h / 2.6));
+    for (var r = 0; r < wr; r++) for (var c = 0; c < wc; c++) {
+      if ((r * 7 + c * 3 + ci) % 5 === 0) continue;   // some windows dark
+      var win = new THREE.Mesh(winGeo, winMats[(r + c + ci) % 4 === 0 ? 1 : 0]);
+      win.position.set(-w / 2 + (c + 0.5) * (w / wc), 1.7 + r * 2.3, d / 2 + 0.03);
+      g.add(win);
+    }
+    var door = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.6, 0.1),
+      new THREE.MeshLambertMaterial({ color: 0x2c1a4a }));
+    door.position.set(0, 0.8, d / 2 + 0.03); g.add(door);
+    g.position.set(x, 0, z); g.rotation.y = ry; scene.add(g);
+    obstacles.push({ x: x, z: z, r: Math.max(w, d) * 0.6 });
+  }
+  function lamp(x, z, lit) {
+    var g = new THREE.Group();
+    var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.11, 2.9, 7),
+      new THREE.MeshLambertMaterial({ color: 0x2c1a4a }));
+    pole.position.y = 1.45; g.add(pole);
+    var head = new THREE.Mesh(new THREE.SphereGeometry(0.27, 10, 8),
+      new THREE.MeshBasicMaterial({ color: 0xffd166 }));
+    head.position.y = 3.0; g.add(head);
+    var glow = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8),
+      new THREE.MeshBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.22 }));
+    glow.position.y = 3.0; g.add(glow);
+    if (lit) { var pl = new THREE.PointLight(0xffc46b, 0.65, 10); pl.position.y = 2.9; g.add(pl); }
+    g.position.set(x, 0, z); scene.add(g);
+    obstacles.push({ x: x, z: z, r: 0.3 });
+  }
+  // street grid: N-S and E-W lanes, buildings on both sides
+  building(5.5, -9, 4, 4, 6.5, -Math.PI / 2, 0); building(5.5, -14, 4.5, 4, 8.5, -Math.PI / 2, 1);
+  building(5.5, 9, 4, 4, 5.5, -Math.PI / 2, 2); building(5.5, 14, 4.5, 4, 7.5, -Math.PI / 2, 3);
+  building(-5.5, -9, 4, 4, 7.5, Math.PI / 2, 4); building(-5.5, -14, 4.5, 4, 5.5, Math.PI / 2, 0);
+  building(-5.5, 9, 4, 4, 8.5, Math.PI / 2, 1); building(-5.5, 14, 4.5, 4, 6.5, Math.PI / 2, 2);
+  building(-9, -5.5, 4, 4, 6, 0, 3); building(-14, -5.5, 4.5, 4, 8, 0, 4);
+  building(9, -5.5, 4, 4, 7, 0, 0); building(14, -5.5, 4.5, 4, 5.5, 0, 1);
+  building(-9, 5.5, 4, 4, 8, Math.PI, 2); building(-14, 5.5, 4.5, 4, 6, Math.PI, 3);
+  building(9, 5.5, 4, 4, 5.5, Math.PI, 4); building(16.5, 5.5, 4, 4, 7, Math.PI, 0);
+  // corner towers
+  building(11, -11, 5, 5, 11, Math.atan2(-11, 11), 1); building(-11, -11, 5, 5, 10, Math.atan2(11, 11), 2);
+  building(11, 11, 5, 5, 9.5, Math.atan2(-11, -11), 3); building(-11, 11, 5, 5, 10.5, Math.atan2(11, -11), 4);
+  // lane-end backdrops (mostly outside the fence, visible down each street)
+  building(0, -18.7, 7, 5, 12, 0, 1); building(0, 18.7, 6, 5, 10, Math.PI, 2);
+  building(18.7, 0, 6, 5, 9, -Math.PI / 2, 3); building(-18.7, 0, 6, 5, 11, Math.PI / 2, 4);
+  obstacles.pop(); obstacles.pop(); obstacles.pop(); obstacles.pop();   // backdrops need no collision
+  // street lamps
+  lamp(3, -6, true); lamp(-3, 6, true); lamp(3, 12, false); lamp(-3, -12, false);
+  lamp(12, 3, false); lamp(-12, -3, false); lamp(-6, -3, false); lamp(6, 3, false);
+  // plaza flavor: memorial corner + pumpkins
+  tombstone(4.3, -4.3, true); tombstone(-4.3, 4.3, false); tombstone(-4.2, -4.4, false);
+  deadTree(4.3, 12.8); deadTree(-4.3, -12.8);
+  pumpkin(3.8, -4.1); pumpkin(-4, 4.2); pumpkin(0.6, -15);
+  fireBarrel(-2.5, -2.5); fireBarrel(2.6, 3); fireBarrel(0.5, 10.5);
+  barricade(0.8, -6.5, 0.3); barricade(-6.5, -0.8, -0.5);
+  makeStation(-2.9, -8, 'rifle'); makeStation(2.9, 8, 'shotgun');
+  // lightning bolt (hidden, flashes across the storm sky)
+  bolt = new THREE.Group();
+  var boltMat = new THREE.MeshBasicMaterial({ color: 0xf0e8ff, fog: false });
+  var b1 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 9, 0.35), boltMat); b1.rotation.z = 0.22;
+  var b2 = new THREE.Mesh(new THREE.BoxGeometry(0.28, 7, 0.28), boltMat); b2.position.set(1.4, -6.5, 0); b2.rotation.z = -0.35;
+  var b3 = new THREE.Mesh(new THREE.BoxGeometry(0.22, 6, 0.22), boltMat); b3.position.set(0.2, -12, 0); b3.rotation.z = 0.28;
+  bolt.add(b1); bolt.add(b2); bolt.add(b3);
+  bolt.position.set(8, 32, -48); bolt.visible = false; scene.add(bolt);
 
-  // cartoon blaster held at bottom-center
-  weapon = new THREE.Group();
-  var gunBody = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.16, 0.4),
-    new THREE.MeshLambertMaterial({ color: 0x4a3a7a }));
-  weapon.add(gunBody);
-  var gunGrip = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.2, 0.12),
-    new THREE.MeshLambertMaterial({ color: 0x2c1a4a }));
-  gunGrip.position.set(0, -0.19, 0.16); gunGrip.rotation.x = 0.35; weapon.add(gunGrip);
-  var barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.065, 0.5, 10),
-    new THREE.MeshLambertMaterial({ color: 0x8fd0c5 }));
-  barrel.rotation.x = Math.PI / 2; barrel.position.set(0, 0.04, -0.42); weapon.add(barrel);
-  var ring = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.02, 8, 14), new THREE.MeshLambertMaterial({ color: 0xffd166 }));
-  ring.position.set(0, 0.04, -0.6); weapon.add(ring);
-  var tip = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 10),
-    new THREE.MeshBasicMaterial({ color: 0x7df9ff }));
-  tip.position.set(0, 0.04, -0.68); weapon.add(tip);
-  var fin = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.12, 0.2),
-    new THREE.MeshLambertMaterial({ color: 0xffd166 }));
-  fin.position.set(0, 0.16, -0.05); weapon.add(fin);
-  muzzle = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5),
-    new THREE.MeshBasicMaterial({ color: 0xbffbff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }));
-  muzzle.position.set(0, 0.04, -0.74); muzzle.visible = false; weapon.add(muzzle);
-  weapon.scale.setScalar(0.34);
-  weapon.rotation.y = 0.12;
-  weapon.position.set(0.15, -0.12, -0.38);
+  // three distinct cartoon guns, one visible at a time
+  function gunMuzzle(parent, x, y, z) {
+    var m = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5),
+      new THREE.MeshBasicMaterial({ color: 0xbffbff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }));
+    m.position.set(x, y, z); m.visible = false; parent.add(m); return m;
+  }
+  function box(p, w, h, d, c, x, y, z, rx) {
+    var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: c }));
+    m.position.set(x, y, z); if (rx) m.rotation.x = rx; p.add(m); return m;
+  }
+  function cyl(p, r1, r2, l, c, x, y, z) {
+    var m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, l, 10), new THREE.MeshLambertMaterial({ color: c }));
+    m.rotation.x = Math.PI / 2; m.position.set(x, y, z); p.add(m); return m;
+  }
+  // PISTOL: compact navy blaster, gold ring, cyan tip
+  var gp = new THREE.Group();
+  box(gp, 0.13, 0.16, 0.4, 0x4a3a7a, 0, 0, 0);
+  box(gp, 0.11, 0.2, 0.12, 0x2c1a4a, 0, -0.19, 0.16, 0.35);
+  cyl(gp, 0.05, 0.065, 0.5, 0x8fd0c5, 0, 0.04, -0.42);
+  var pring = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.02, 8, 14), new THREE.MeshLambertMaterial({ color: 0xffd166 }));
+  pring.position.set(0, 0.04, -0.6); gp.add(pring);
+  var ptip = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 10), new THREE.MeshBasicMaterial({ color: 0x7df9ff }));
+  ptip.position.set(0, 0.04, -0.68); gp.add(ptip);
+  box(gp, 0.03, 0.12, 0.2, 0xffd166, 0, 0.16, -0.05);
+  muzzles.pistol = gunMuzzle(gp, 0, 0.04, -0.74); gunGroups.pistol = gp;
+  // RIFLE: long wood stock, dark barrel, scope, magazine
+  var gr = new THREE.Group();
+  box(gr, 0.12, 0.14, 0.85, 0xa06a3a, 0, 0, -0.1);
+  box(gr, 0.1, 0.2, 0.3, 0x8a5a2a, 0, -0.05, 0.42);
+  cyl(gr, 0.035, 0.035, 0.55, 0x3a3a4a, 0, 0.04, -0.72);
+  box(gr, 0.09, 0.24, 0.14, 0x3a3a4a, 0, -0.18, -0.08, 0.15);
+  var scope = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.24, 10), new THREE.MeshLambertMaterial({ color: 0x2c2c3a }));
+  scope.rotation.x = Math.PI / 2; scope.position.set(0, 0.17, -0.12); gr.add(scope);
+  var sring = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.015, 8, 14), new THREE.MeshLambertMaterial({ color: 0xffd166 }));
+  sring.position.set(0, 0.17, -0.24); gr.add(sring);
+  box(gr, 0.03, 0.06, 0.05, 0x2c2c3a, 0, 0.1, -0.12);
+  muzzles.rifle = gunMuzzle(gr, 0, 0.04, -1.02); gunGroups.rifle = gr;
+  // SHOTGUN: thick double barrel, pump, wood furniture
+  var gs = new THREE.Group();
+  box(gs, 0.2, 0.16, 0.55, 0x8a4a2a, 0, 0, 0.1);
+  box(gs, 0.16, 0.1, 0.22, 0xa06a3a, 0, -0.04, -0.35);
+  cyl(gs, 0.045, 0.045, 0.55, 0x2c2c3a, -0.055, 0.06, -0.5);
+  cyl(gs, 0.045, 0.045, 0.55, 0x2c2c3a, 0.055, 0.06, -0.5);
+  var bead = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffd166 }));
+  bead.position.set(0, 0.13, -0.72); gs.add(bead);
+  box(gs, 0.18, 0.14, 0.2, 0x6a3a1a, 0, -0.02, 0.42);
+  muzzles.shotgun = gunMuzzle(gs, 0, 0.06, -0.82); gunGroups.shotgun = gs;
+  for (var gk in gunGroups) {
+    var gg = gunGroups[gk];
+    gg.scale.setScalar(0.34); gg.rotation.y = 0.12;
+    gg.position.set(0.15, -0.12, -0.38);
+    camera.add(gg);
+  }
+  equipGun('pistol');
   weaponBaseY = weapon.position.y;
-  camera.add(weapon);
   scene.add(camera);
 }
 
@@ -456,14 +553,16 @@ function makeZombieMesh(type) {
 function spawnZombie(type) {
   var t = ZTYPES[type];
   var mesh = makeZombieMesh(type);
-  // spawn on a random edge arc, away from player
-  var px = P.x, pz = P.z, x, z, tries = 0;
-  do {
-    var a = Math.random() * Math.PI * 2, d = 11.5 + Math.random() * 3.5;
-    x = Math.max(-ARENA + 1, Math.min(ARENA - 1, px + Math.cos(a) * d));
-    z = Math.max(-ARENA + 1, Math.min(ARENA - 1, pz + Math.sin(a) * d));
-    tries++;
-  } while (tries < 12 && Math.hypot(x - px, z - pz) < 8);
+  // spawn at street gates so the horde shuffles down the lanes
+  var GATES = [[0, -15], [0, 15], [-15, 0], [15, 0], [0, -10], [0, 10], [-10, 0], [10, 0]];
+  var px = P.x, pz = P.z, best = null, bd = -1;
+  for (var gi = 0; gi < GATES.length; gi++) {
+    var gd = Math.hypot(GATES[gi][0] - px, GATES[gi][1] - pz);
+    if (gd > bd) { bd = gd; best = GATES[gi]; }
+  }
+  var far = GATES.filter(function (g) { return Math.hypot(g[0] - px, g[1] - pz) > 8; });
+  var gate = far.length ? far[(Math.random() * far.length) | 0] : best;
+  var x = gate[0] + (Math.random() * 2.4 - 1.2), z = gate[1] + (Math.random() * 2.4 - 1.2);
   mesh.position.set(x, 0, z);
   scene.add(mesh);
   var zb = { type: type, hp: t.hp, speed: t.speed * (0.9 + Math.random() * 0.2), mesh: mesh,
@@ -541,12 +640,18 @@ function barricade(x, z, rot) {
   g.position.set(x, 0, z); g.rotation.y = rot || 0; scene.add(g);
   obstacles.push({ x: x, z: z, r: 1.15 });
 }
+function equipGun(kind) {
+  if (!gunGroups[kind]) return;
+  for (var k in gunGroups) gunGroups[k].visible = (k === kind);
+  weapon = gunGroups[kind]; muzzle = muzzles[kind];
+}
 function buySwap() {
   if (!nearStation || G.mode !== 'playing') return;
   var w = WTYPES[nearStation.w];
   if (G.weapon === nearStation.w || G.score < w.price) { SoundEngine.dryfire(); return; }
   G.score -= w.price;
   G.weapon = nearStation.w; G.clip = w.clip; G.ammo = w.clip; G.reloading = 0;
+  equipGun(G.weapon);
   showBanner(w.name + '!'); SoundEngine.heal(); updateHUD();
 }
 
@@ -570,7 +675,7 @@ function resetGame() {
   for (var u = tracers.length - 1; u >= 0; u--) scene.remove(tracers[u]);
   tracers.length = 0;
   G.score = 0; G.hearts = 3; G.wave = 0; G.combo = 0; G.comboT = 0;
-  G.weapon = 'pistol'; G.instaT = 0; G.doubleT = 0;
+  G.weapon = 'pistol'; G.instaT = 0; G.doubleT = 0; equipGun('pistol');
   G.clip = WTYPES.pistol.clip; G.ammo = G.clip; G.reloading = 0; G.spawnQueue = 0; G.betweenT = 1.2; G.fireCd = 0; G.firing = false;
   P.x = 0; P.z = 6; P.yaw = 0; P.pitch = -0.07;   // yaw 0 looks toward -z (crypts)
   updateHUD();
@@ -1096,6 +1201,11 @@ function loop() {
       flames[fi].scale.y = 0.9 + Math.sin(t * 13 + fi * 1.7) * 0.18;
       flames[fi].scale.x = flames[fi].scale.z = 1 + Math.sin(t * 11 + fi) * 0.1;
     }
+    if (t > nextBolt) {
+      bolt.visible = true; hemi.intensity = 2.1; boltT = t;
+      bolt.position.x = Math.random() * 70 - 35; nextBolt = t + 6 + Math.random() * 9;
+    }
+    if (bolt.visible && t - boltT > 0.14) { bolt.visible = false; hemi.intensity = 0.95; }
     var powTxt = '';
     if (G.instaT > 0) powTxt += 'INSTA-KILL ' + Math.ceil(G.instaT) + 's  ';
     if (G.doubleT > 0) powTxt += '2X POINTS ' + Math.ceil(G.doubleT) + 's';
