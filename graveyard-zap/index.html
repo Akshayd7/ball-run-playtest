@@ -121,7 +121,7 @@
   <div class="card">
     <h1>GRAVEYARD ZAP</h1>
     <p style="color:#ff9f68; font-weight:800; letter-spacing:2px; font-size:14px;">FIRST-PERSON ZOMBIE SURVIVAL</p>
-    <p>The dead are rising in the old town.<br>
+    <p>The silly zombies are loose in the old town!<br>
     Move with the left pad, drag the right side to look, and drop every zombie.<br>
     Earn points per hit, swap for bigger weapons at the glowing crates,<br>and grab power-up crystals!</p>
     <p class="best" id="menu-best"></p>
@@ -208,6 +208,7 @@ var SoundEngine = (function () {
   }
   return {
     unlock: function () { if (ensure()) resume(); },
+    tap: function () { return { ctx: ctx, master: master }; },
     musicStart: function () {
       if (!ensure() || musicTimer) return;
       resume(); musicStep = 0;
@@ -224,7 +225,7 @@ var SoundEngine = (function () {
     },
     powerup: function () { tone(523, 523, 0.09, 'square', 0.25); tone(659, 659, 0.09, 'square', 0.25, 0.09); tone(880, 1046, 0.16, 'square', 0.28, 0.18); },
     buy: function () { tone(660, 660, 0.08, 'triangle', 0.28); tone(880, 880, 0.14, 'triangle', 0.3, 0.09); },
-    thunder: function () { noise(1.1, 0.55, 160); tone(55, 30, 0.9, 'triangle', 0.22); },
+    thunder: function () { noise(0.7, 0.32, 220); tone(70, 40, 0.5, 'triangle', 0.13); },
     dryfire: function () { tone(1200, 900, 0.05, 'square', 0.15); },
     reload: function () { tone(500, 300, 0.07, 'square', 0.2); tone(700, 500, 0.07, 'square', 0.2, 0.5); },
     zhit: function () { tone(300, 120, 0.09, 'sawtooth', 0.25); },
@@ -234,7 +235,7 @@ var SoundEngine = (function () {
     over: function () { tone(392, 392, 0.25, 'sawtooth', 0.28); tone(311, 311, 0.25, 'sawtooth', 0.28, 0.28); tone(233, 180, 0.6, 'sawtooth', 0.3, 0.56); },
     heal: function () { tone(523, 784, 0.18, 'sine', 0.3); },
     click: function () { tone(880, 660, 0.06, 'triangle', 0.2); },
-    growl: function () { tone(90 + Math.random() * 40, 60, 0.5, 'sawtooth', 0.14); }
+    growl: function () { var f = 140 + Math.random() * 60; tone(f, f * 0.6, 0.16, 'square', 0.12); tone(f * 0.8, f * 1.1, 0.15, 'square', 0.1, 0.15); }
   };
 })();
 
@@ -560,9 +561,12 @@ function makeZombieMesh(type) {
   var head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.48, 0.46), skin); head.position.y = 1.5; g.add(head);
   var jaw = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.12, 0.1), new THREE.MeshLambertMaterial({ color: 0x3a7a3a }));
   jaw.position.set(0, 1.32, -0.24); g.add(jaw);
-  var eyeMat = new THREE.MeshBasicMaterial({ color: 0xff4040 });
-  var eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), eyeMat); eyeL.position.set(-0.12, 1.56, -0.24); g.add(eyeL);
-  var eyeR = eyeL.clone(); eyeR.position.x = 0.12; g.add(eyeR);
+  var whiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  var pupilMat = new THREE.MeshBasicMaterial({ color: 0x241a3a });
+  var eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.095, 8, 8), whiteMat); eyeL.position.set(-0.13, 1.58, -0.22); g.add(eyeL);
+  var pupL = new THREE.Mesh(new THREE.SphereGeometry(0.038, 8, 8), pupilMat); pupL.position.set(-0.13, 1.58, -0.3); g.add(pupL);
+  var eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), whiteMat); eyeR.position.set(0.13, 1.55, -0.22); g.add(eyeR);
+  var pupR = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 8), pupilMat); pupR.position.set(0.13, 1.55, -0.28); g.add(pupR);
   var patch = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.14, 0.02), new THREE.MeshLambertMaterial({ color: 0xffd166 }));
   patch.position.set(0.15, 0.95, -0.19); g.add(patch);
   // soft blob shadow
