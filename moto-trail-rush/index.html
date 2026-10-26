@@ -71,6 +71,7 @@
   <div id="besttag2"></div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script>
 <script>
 (function(){
 "use strict";
@@ -611,6 +612,39 @@ function hit(){
   for(var i=0;i<4;i++)puff(bike.position.x,bike.position.y,bike.position.z,true);
   if(hearts<=0)gameOver();
 }
+// ---------- PLAYGAMA BRIDGE SDK WIRING (additive only; game code above identical to tested build) ----------
+(function(){
+  function setMutedUI(m){muted=m;var b=document.getElementById('mutebtn');if(b){b.textContent=m?'X':'S';b.style.background=m?'rgba(150,40,60,.85)':'rgba(30,16,46,.66)';}}
+  function init(){
+    if(!window.bridge||typeof window.bridge.initialize!=='function')return; // SDK unavailable: run vanilla
+    window.bridge.initialize().then(function(){
+      try{window.bridge.platform.sendMessage('game_ready');}catch(e){}
+      // Audio hooks: silence when platform asks (ads/background); restore if it muted us.
+      var weMuted=false;
+      function applyPlatformAudio(enabled){
+        if(!enabled&&!muted){setMutedUI(true);weMuted=true;}
+        else if(enabled&&weMuted&&muted){setMutedUI(false);weMuted=false;}
+      }
+      try{applyPlatformAudio(!!window.bridge.platform.isAudioEnabled);}catch(e){}
+      try{window.bridge.platform.on(window.bridge.EVENT_NAME.AUDIO_STATE_CHANGED,function(en){applyPlatformAudio(!!en);});}catch(e){}
+      // Pause hooks: freeze the sim when the platform pauses (ad breaks).
+      try{window.bridge.platform.on(window.bridge.EVENT_NAME.PAUSE_STATE_CHANGED,function(isPaused){if(running&&!dead)paused=!!isPaused;});}catch(e){}
+      // Interstitial on game over.
+      var origGameOver=gameOver;
+      gameOver=function(){
+        try{origGameOver();}catch(e){}
+        try{
+          if(window.bridge.advertisement&&window.bridge.advertisement.isInterstitialSupported){
+            var p=window.bridge.advertisement.showInterstitial();
+            if(p&&typeof p.catch==='function')p.catch(function(){});
+          }
+        }catch(e){}
+      };
+    }).catch(function(){/* Bridge init failed: run vanilla */});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
+  else init();
+})();
 animate();
 })();
 </script>
