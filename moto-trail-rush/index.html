@@ -9,12 +9,12 @@
   #c{display:block;width:100%;height:100%}
   .hud{position:fixed;pointer-events:none;z-index:10}
   #topbar{top:10px;left:10px;display:flex;align-items:center;gap:10px}
-  #score{background:rgba(30,16,46,.66);color:#fff;border-radius:16px;padding:8px 16px;font-size:26px;font-weight:900;min-width:86px;text-align:center;box-shadow:0 3px 0 rgba(0,0,0,.22)}
-  #hearts{display:flex;gap:5px}
-  .heart{width:22px;height:22px;border-radius:50%;background:#ff5d73;border:3px solid #fff;box-shadow:0 2px 0 rgba(0,0,0,.22)}
+  #score{background:rgba(30,16,46,.66);color:#fff;border-radius:14px;padding:6px 12px;font-size:22px;font-weight:900;min-width:62px;text-align:center;box-shadow:0 3px 0 rgba(0,0,0,.22)}
+  #hearts{display:flex;gap:4px}
+  .heart{width:18px;height:18px;border-radius:50%;background:#ff5d73;border:2px solid #fff;box-shadow:0 2px 0 rgba(0,0,0,.22)}
   .heart.off{background:rgba(90,70,104,.8);border-color:#a08bb2}
-  #btns{top:10px;right:10px;display:flex;gap:8px;pointer-events:auto}
-  .rbtn{width:46px;height:46px;border-radius:50%;background:rgba(30,16,46,.66);border:none;color:#fff;font-size:19px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.22);display:flex;align-items:center;justify-content:center}
+  #btns{top:10px;right:10px;display:flex;gap:6px;pointer-events:auto}
+  .rbtn{width:40px;height:40px;border-radius:50%;background:rgba(30,16,46,.66);border:none;color:#fff;font-size:17px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.22);display:flex;align-items:center;justify-content:center}
   #jumpbtn{bottom:26px;right:22px;pointer-events:auto;width:104px;height:104px;border-radius:50%;background:linear-gradient(180deg,#ffd94d,#ff9d3c);border:5px solid #fff;color:#7a3c00;font-size:19px;font-weight:900;cursor:pointer;box-shadow:0 6px 0 rgba(0,0,0,.25)}
   #steer{bottom:26px;left:22px;pointer-events:auto;display:flex;gap:14px}
   .sbtn{width:84px;height:84px;border-radius:50%;background:rgba(30,16,46,.55);border:5px solid #fff;color:#fff;font-size:30px;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.25)}
@@ -33,11 +33,11 @@
   @keyframes flashA{0%{opacity:1}100%{opacity:0}}
   #hearts.shake{animation:hshake .45s}
   @keyframes hshake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
-  #missions{top:62px;left:10px;display:flex;flex-direction:column;gap:5px}
+  #missions{top:94px;left:10px;display:flex;flex-direction:column;gap:5px}
   .mrow{background:rgba(30,16,46,.55);color:#fff;border-radius:11px;padding:4px 10px;font-size:12.5px;font-weight:700;border:2px solid transparent;width:max-content}
   .mrow.done{color:#9df0a8;border-color:#3fb950}
-  #mbanner{top:118px;left:50%;background:linear-gradient(180deg,#ffd94d,#ff9d3c);color:#5b2d00;border-radius:16px;padding:9px 20px;font-size:17px;font-weight:900;box-shadow:0 4px 0 rgba(0,0,0,.28);opacity:0;white-space:nowrap;max-width:94vw;z-index:23}
-  #combo{top:16px;left:50%;transform:translateX(-50%);background:linear-gradient(180deg,#ffaa20,#e87800);color:#fff;border:3px solid #ffd700;border-radius:14px;padding:4px 14px;font-size:19px;font-weight:900;opacity:0;transition:opacity .25s;box-shadow:0 3px 0 rgba(0,0,0,.25);z-index:23}
+  #mbanner{top:190px;left:50%;background:linear-gradient(180deg,#ffd94d,#ff9d3c);color:#5b2d00;border-radius:16px;padding:9px 20px;font-size:16px;font-weight:900;box-shadow:0 4px 0 rgba(0,0,0,.28);opacity:0;white-space:nowrap;max-width:94vw;overflow:hidden;text-overflow:ellipsis;z-index:23}
+  #combo{top:54px;left:10px;background:linear-gradient(180deg,#ffaa20,#e87800);color:#fff;border:3px solid #ffd700;border-radius:12px;padding:3px 12px;font-size:16px;font-weight:900;opacity:0;transition:opacity .25s;box-shadow:0 3px 0 rgba(0,0,0,.25);z-index:23}
   #combo.show{opacity:1}
   #mbanner.go{animation:mbdrop 2.3s ease-out}
   @keyframes mbdrop{0%{opacity:0;transform:translateX(-50%) translateY(-18px) scale(.8)}12%{opacity:1;transform:translateX(-50%) translateY(0) scale(1.06)}20%{transform:translateX(-50%) translateY(0) scale(1)}80%{opacity:1;transform:translateX(-50%) translateY(0)}100%{opacity:0;transform:translateX(-50%) translateY(-8px)}}
@@ -122,7 +122,7 @@ function groundH(x,s){
 function mulberry(seed){var a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 
 // ---------- shared materials / geometries ----------
-var M={grass:toon(0x55b853),grass2:toon(0x54b350),dirt:toon(0xdca468),trunk:toon(0x8a5a33),leaf1:toon(0x3fae5a),leaf2:toon(0x63c96f),leaf3:toon(0x2f9e4f),rock:toon(0x8d7d90),bam:toon(0x7fcf5f),mesa:toon(0xd08a4e),mesaTop:toon(0x5cbf57),cloud:new THREE.MeshToonMaterial({color:0xffffff,emissive:0x555044,gradientMap:gtex,fog:false}),flowerW:toon(0xfff6e8),flowerY:toon(0xffd94d),log:toon(0x9a6236)};
+var M={grass:toon(0x55b853),grass2:toon(0x54b350),dirt:toon(0xbf8a5c),trunk:toon(0x8a5a33),leaf1:toon(0x3fae5a),leaf2:toon(0x63c96f),leaf3:toon(0x2f9e4f),rock:toon(0x8d7d90),bam:toon(0x7fcf5f),mesa:toon(0xd08a4e),mesaTop:toon(0x5cbf57),cloud:new THREE.MeshToonMaterial({color:0xffffff,emissive:0x555044,gradientMap:gtex,fog:false}),flowerW:toon(0xfff6e8),flowerY:toon(0xffd94d),log:toon(0x9a6236)};
 var GEO={sphere:new THREE.SphereGeometry(1,10,8),cone:new THREE.ConeGeometry(1,1,7),trunk:new THREE.CylinderGeometry(0.22,0.32,1.6,6),bamboo:new THREE.CylinderGeometry(0.16,0.2,7,6),rock:new THREE.DodecahedronGeometry(1,0),log:new THREE.CylinderGeometry(0.45,0.45,5.2,8)};
 
 // ---------- terrain tiles ----------
@@ -286,8 +286,8 @@ var streaks=[];var streakM=new THREE.MeshBasicMaterial({color:0xffffff,transpare
 for(var i=0;i<12;i++){var st=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.06,3.2),streakM);st.visible=false;scene.add(st);streaks.push({m:st,s:0,on:false});}
 
 // ---------- gameplay objects ----------
-var orbs=[];var orbM=new THREE.MeshToonMaterial({color:0xffd94d,emissive:0xb88200,gradientMap:gtex});
-for(var i=0;i<60;i++){var o=new THREE.Mesh(GEO.sphere,orbM);o.scale.setScalar(0.42);o.visible=false;scene.add(o);orbs.push({m:o,s:0,lat:0,dy:0,on:false});}
+var orbs=[];var orbM=new THREE.MeshToonMaterial({color:0xffe14d,emissive:0xd89a00,gradientMap:gtex});var orbRimM=new THREE.MeshBasicMaterial({color:0x6b3d00,side:THREE.BackSide});
+for(var i=0;i<60;i++){var o=new THREE.Mesh(GEO.sphere,orbM);o.scale.setScalar(0.42);o.visible=false;var rim=new THREE.Mesh(GEO.sphere,orbRimM);rim.scale.setScalar(1.22);o.add(rim);scene.add(o);orbs.push({m:o,s:0,lat:0,dy:0,on:false});}
 var rocks=[];
 for(var i=0;i<10;i++){var rk=new THREE.Mesh(GEO.rock,M.rock);rk.castShadow=true;rk.visible=false;scene.add(rk);rocks.push({m:rk,s:0,lat:0,on:false});}
 var logs=[];
@@ -535,7 +535,7 @@ function animate(){
       if(o.s<playerS-8){o.on=false;o.m.visible=false;continue;}
       if(Math.abs(o.s-playerS)<7){var tlat=px-pathCenterX(o.s);var dlat=tlat-o.lat;if(Math.abs(dlat)>0.05&&Math.abs(dlat)<1.7)o.lat+=dlat*Math.min(1,dt*5);}
       var ox=pathCenterX(o.s)+o.lat;var oy=groundH(ox,o.s)+o.dy+Math.sin(bob*2+o.s)*0.15;
-      o.m.position.set(ox,oy,-o.s);o.m.rotation.y+=dt*3;
+      o.m.position.set(ox,oy,-o.s);o.m.rotation.y+=dt*3;o.m.scale.setScalar(0.42*(1+0.14*Math.sin(performance.now()*0.007+o.s)));
       if(Math.abs(o.s-playerS)<1.3&&Math.abs(ox-px)<1.6&&Math.abs(oy-py)<1.9){o.on=false;o.m.visible=false;combo++;comboT=2.5;if(combo>maxCombo)maxCombo=combo;var mult=Math.min(5,combo);var pts=50*mult;score+=pts;chime(mult);puff(ox,oy,-o.s,true);missionTick('orbs');popup('+'+pts,ox,oy+0.6,-o.s,mult>=3?'#ff9d3c':'#ffd94d','orb');updateComboBadge();}
     }
     if(invuln<=0){
