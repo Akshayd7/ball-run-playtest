@@ -59,7 +59,7 @@
 <div id="hitflash"></div>
 <div class="overlay" id="menu">
   <div class="title">Moto Trail Rush</div>
-  <div class="sub">Ride the floating sky trail into the sunset.<br>Grab sun orbs, dodge boulders and logs. 3 hearts.<br><br>Steer: Arrow keys / A D / side buttons<br>Jump: Space / JUMP button<br><br><span style="color:#ffd94d;font-weight:900">RIDE MISSIONS</span><br>Collect 20 orbs +1500 &nbsp; Jump 4 logs +1500<br>3 close calls +2000 &nbsp; All done +3000</div>
+  <div class="sub">Ride the floating sky trail into the sunset.<br>Grab sun orbs, dodge boulders and logs. 3 hearts.<br><br>Steer: Arrow keys / A D / side buttons<br>Jump: Space / JUMP button<br><br><span style="color:#ffd94d;font-weight:900">RIDE MISSIONS</span><br>3 random missions every ride<br>Finish all 3 for +3000 bonus</div>
   <button class="bigbtn" id="startbtn">START RIDE</button>
   <div id="besttag"></div>
 </div>
@@ -91,9 +91,16 @@ function toon(c,e){return new THREE.MeshToonMaterial({color:c,gradientMap:gtex,e
 
 // sky dome: peach horizon to pink-lavender top
 var skyMat=new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,
+ uniforms:{uLow:{value:new THREE.Color(1,.83,.55)},uMid:{value:new THREE.Color(.99,.6,.44)},uTop:{value:new THREE.Color(.62,.4,.66)}},
  vertexShader:"varying vec3 vP;void main(){vP=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}",
- fragmentShader:"varying vec3 vP;void main(){float t=clamp(vP.y/280.+.18,0.,1.);vec3 low=vec3(1.,.83,.55);vec3 mid=vec3(.99,.6,.44);vec3 top=vec3(.62,.4,.66);vec3 c=mix(low,mix(mid,top,smoothstep(.4,1.,t)),smoothstep(0.,.45,t));gl_FragColor=vec4(c,1.);}"});
+ fragmentShader:"uniform vec3 uLow;uniform vec3 uMid;uniform vec3 uTop;varying vec3 vP;void main(){float t=clamp(vP.y/280.+.18,0.,1.);vec3 c=mix(uLow,mix(uMid,uTop,smoothstep(.4,1.,t)),smoothstep(0.,.45,t));gl_FragColor=vec4(c,1.);}"});
 var sky=new THREE.Mesh(new THREE.SphereGeometry(420,20,14),skyMat);scene.add(sky);
+var starGeo=new THREE.BufferGeometry();var starPos=new Float32Array(260*3);
+for(var i=0;i<260;i++){var th=Math.random()*Math.PI*2,ph=Math.random()*Math.PI*0.42,r=380;
+ starPos[i*3]=r*Math.cos(th)*Math.cos(ph);starPos[i*3+1]=r*Math.sin(ph)+10;starPos[i*3+2]=r*Math.sin(th)*Math.cos(ph);}
+starGeo.setAttribute('position',new THREE.BufferAttribute(starPos,3));
+var starMat=new THREE.PointsMaterial({color:0xffffff,size:2.4,sizeAttenuation:false,transparent:true,opacity:0,fog:false,depthWrite:false});
+sky.add(new THREE.Points(starGeo,starMat));
 var sun=new THREE.Mesh(new THREE.CircleGeometry(30,28),new THREE.MeshBasicMaterial({color:0xfff0b8,fog:false}));
 scene.add(sun);
 var sunHalo=new THREE.Mesh(new THREE.CircleGeometry(38,28),new THREE.MeshBasicMaterial({color:0xffd98e,transparent:true,opacity:.16,fog:false}));
@@ -211,6 +218,7 @@ for(var i=0;i<14;i++){
 
 // ---------- bike + rider ----------
 var bike=new THREE.Group();
+var headL=new THREE.PointLight(0xffe9b0,0,16,1.6);headL.position.set(0,1.3,-1.4);bike.add(headL);
 var bodyM=toon(0x2fb9b0),accM=toon(0xff8a3c),whiteM=toon(0xf6f2ea),darkM=toon(0x3a3444),skinM=toon(0xf2b98a),helmM=toon(0xff5340),glassM=new THREE.MeshToonMaterial({color:0xbfe8ff,gradientMap:gtex,transparent:true,opacity:0.55});
 var bikeBody=new THREE.Group();
 var hull=new THREE.Mesh(GEO.sphere,bodyM);hull.scale.set(0.62,0.5,1.35);hull.position.y=0.85;bikeBody.add(hull);
@@ -268,6 +276,11 @@ var dust=[];var dustM=toon(0xd9b183);dustM.transparent=true;dustM.opacity=0.35;
 for(var i=0;i<22;i++){var d=new THREE.Mesh(GEO.sphere,dustM);d.visible=false;scene.add(d);dust.push({m:d,life:0});}
 function puff(x,y,z,big){for(var i=0;i<dust.length;i++){if(dust[i].life<=0){var d=dust[i];d.m.position.set(x+rand(-0.3,0.3),y,z+rand(-0.3,0.3));d.m.scale.setScalar(big?0.45:0.15);d.life=1;d.m.visible=true;break;}}}
 
+// sparks (near-miss + collect juice)
+var sparks=[];var sparkM=new THREE.MeshBasicMaterial({color:0xffb347,transparent:true,opacity:0.95,fog:false});
+for(var i=0;i<14;i++){var sp=new THREE.Mesh(GEO.sphere,sparkM.clone());sp.visible=false;scene.add(sp);sparks.push({m:sp,life:0,vx:0,vy:0,vz:0});}
+function spark(x,y,z){for(var i=0;i<sparks.length;i++){if(sparks[i].life<=0){var s=sparks[i];s.m.position.set(x,y,z);s.m.scale.setScalar(rand(0.06,0.14));s.vx=rand(-3,3);s.vy=rand(2,5);s.vz=rand(-3,3);s.life=0.6;s.m.visible=true;break;}}}
+
 // speed lines
 var streaks=[];var streakM=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.32});
 for(var i=0;i<12;i++){var st=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.06,3.2),streakM);st.visible=false;scene.add(st);streaks.push({m:st,s:0,on:false});}
@@ -318,13 +331,63 @@ var combo=0,comboT=0,nextMile=500,bestShown=false;
 var best=parseInt(localStorage.getItem('motoTrailBest')||'0',10)||0;
 var keys={};
 function rand(a,b){return a+Math.random()*(b-a);}
+// ---------- biome phases ----------
+var PHASES=[
+ {tag:'',fog:new THREE.Color(0xf6a468),low:new THREE.Color(1,.83,.55),mid:new THREE.Color(.99,.6,.44),top:new THREE.Color(.62,.4,.66),sun:new THREE.Color(0xfff0b8),hemi:0.66,dli:0.72,dlc:new THREE.Color(0xffcf92)},
+ {tag:'NIGHT RIDE!',fog:new THREE.Color(0x241a3f),low:new THREE.Color(.23,.16,.37),mid:new THREE.Color(.16,.11,.29),top:new THREE.Color(.07,.05,.16),sun:new THREE.Color(0xdfe8ff),hemi:0.35,dli:0.45,dlc:new THREE.Color(0x9fb4ff)},
+ {tag:'DAWN RIDE!',fog:new THREE.Color(0x9ec3e8),low:new THREE.Color(1,.91,.79),mid:new THREE.Color(.66,.78,.92),top:new THREE.Color(.44,.61,.85),sun:new THREE.Color(0xfff6d8),hemi:0.62,dli:0.7,dlc:new THREE.Color(0xfff2cc)}
+];
+var lastPhase=0;
+function biomeUpdate(dt){
+  var ph=Math.floor(playerS/1000)%3;
+  if(ph!==lastPhase){lastPhase=ph;if(PHASES[ph].tag)banner(PHASES[ph].tag);}
+  var P=PHASES[ph],lk=Math.min(1,dt*0.7);
+  scene.fog.color.lerp(P.fog,lk);
+  skyMat.uniforms.uLow.value.lerp(P.low,lk);skyMat.uniforms.uMid.value.lerp(P.mid,lk);skyMat.uniforms.uTop.value.lerp(P.top,lk);
+  sun.material.color.lerp(P.sun,lk);sunHalo.material.color.lerp(P.sun,lk);
+  hemi.intensity+=(P.hemi-hemi.intensity)*lk;dl.intensity+=(P.dli-dl.intensity)*lk;dl.color.lerp(P.dlc,lk);
+  var night=(ph===1);
+  starMat.opacity+=((night?0.9:0)-starMat.opacity)*lk;
+  headL.intensity+=((night?1.5:0)-headL.intensity)*lk;
+  scene.fog.far+=((night?160:205)-scene.fog.far)*lk;
+}
+
 // ---------- missions + feedback ----------
 var camShake=0;
-var missions=[
- {id:'orbs',label:'Collect 20 orbs',goal:20,reward:1500,n:0,done:false},
- {id:'logs',label:'Jump 4 logs',goal:4,reward:1500,n:0,done:false},
- {id:'close',label:'3 close calls',goal:3,reward:2000,n:0,done:false}
+var MISSION_POOL=[
+ {id:'orbs',g:[15,20,25],l:'Collect X orbs'},
+ {id:'logs',g:[3,4,5],l:'Jump X logs'},
+ {id:'close',g:[2,3,4],l:'X close calls'},
+ {id:'dist',g:[800,1200,1600],l:'Ride X m'},
+ {id:'combo',g:[4,5],l:'Reach COMBO xX'},
+ {id:'score',g:[1500,2500,4000],l:'Score X points'},
+ {id:'nohit',g:[400,600],l:'Ride X m, no hits'}
 ];
+var missions=[],allDoneFired=false,maxCombo=0,lastHitS=0,mRedrawT=0;
+function pickMissions(){
+  var pool=MISSION_POOL.slice();missions=[];allDoneFired=false;
+  for(var k=0;k<3;k++){
+    var idx=Math.floor(Math.random()*pool.length);var def=pool.splice(idx,1)[0];
+    var tier=Math.floor(Math.random()*def.g.length);var goal=def.g[tier];
+    missions.push({id:def.id,label:def.l.replace('X',goal),goal:goal,reward:(tier===0?1000:(tier===1?1500:2000)),n:0,done:false});
+  }
+}
+function checkDone(m){if(!m.done&&m.n>=m.goal){m.done=true;score+=m.reward;banner('MISSION DONE: '+m.label+' +'+m.reward);fanfare();}}
+function allDoneCheck(){
+  if(allDoneFired)return;var all=true;
+  for(var i=0;i<missions.length;i++)if(!missions[i].done)all=false;
+  if(all&&missions.length){allDoneFired=true;score+=3000;banner('ALL MISSIONS COMPLETE +3000');fanfare();setTimeout(fanfare,260);}
+}
+function missionPoll(){
+  for(var i=0;i<missions.length;i++){var m=missions[i];if(m.done)continue;
+    if(m.id==='dist')m.n=Math.floor(playerS);
+    else if(m.id==='score')m.n=Math.floor(score);
+    else if(m.id==='combo')m.n=maxCombo;
+    else if(m.id==='nohit')m.n=Math.floor(playerS-lastHitS);
+    else continue;
+    checkDone(m);}
+  drawMissions();allDoneCheck();
+}
 var V3=new THREE.Vector3();
 function popup(txt,x,y,z,color,cls){
   var layer=document.getElementById('popups');if(layer.children.length>14)return;
@@ -348,24 +411,22 @@ function drawMissions(){
   });
 }
 function missionTick(id){
-  var i,m;
-  for(i=0;i<missions.length;i++){m=missions[i];
+  for(var i=0;i<missions.length;i++){var m=missions[i];
     if(m.done||m.id!==id)continue;
-    m.n++;
-    if(m.n>=m.goal){m.done=true;score+=m.reward;banner('MISSION DONE: '+m.label+' +'+m.reward);fanfare();}
-    break;
+    m.n++;checkDone(m);break;
   }
-  drawMissions();
-  var allDone=true;
-  for(i=0;i<missions.length;i++)if(!missions[i].done)allDone=false;
-  if(allDone&&missions.length){score+=3000;banner('ALL MISSIONS COMPLETE +3000');fanfare();setTimeout(fanfare,260);}
+  drawMissions();allDoneCheck();
 }
 function updateComboBadge(){var c=document.getElementById('combo');var mult=Math.min(5,combo);
   if(mult>=2){c.textContent='COMBO x'+mult;c.classList.add('show');}else c.classList.remove('show');}
+var nmKick=0;
 function nearMiss(x,y,z){
   score+=25;missionTick('close');
   popup('CLOSE! +25',x,y,z,'#7df9ff');
   beep(1200,0.07,'sine',0.08);setTimeout(function(){beep(1500,0.09,'sine',0.07);},60);
+  camShake=Math.max(camShake,0.22);nmKick=(Math.random()<0.5?-1:1)*0.5;
+  puff(x,y,z,true);
+  for(var si=0;si<7;si++)spark(x,y+0.4,z);
 }
 function updateBestTags(){document.getElementById('besttag').textContent=best>0?('Best: '+best):'';document.getElementById('besttag2').textContent='Best: '+best;}
 function drawHearts(){var h=document.getElementById('hearts');h.innerHTML='';for(var i=0;i<3;i++){var d=document.createElement('div');d.className='heart'+(i<hearts?'':' off');h.appendChild(d);}}
@@ -391,7 +452,7 @@ function resetWorld(){
   rocks.forEach(function(r){r.on=false;r.m.visible=false;});
   logs.forEach(function(l){l.on=false;l.m.visible=false;});
   streaks.forEach(function(s){s.on=false;s.m.visible=false;});
-  missions.forEach(function(m){m.n=0;m.done=false;});camShake=0;combo=0;comboT=0;nextMile=500;bestShown=false;updateComboBadge();bikeBody.scale.set(1,1,1);
+  pickMissions();camShake=0;nmKick=0;maxCombo=0;lastHitS=0;mRedrawT=0;combo=0;comboT=0;nextMile=500;bestShown=false;lastPhase=0;updateComboBadge();bikeBody.scale.set(1,1,1);
   document.getElementById('popups').innerHTML='';drawMissions();
   dust.forEach(function(d){d.life=0;d.m.visible=false;});
   var base=-30;
@@ -444,7 +505,8 @@ function animate(){
     var ah=groundH(px,playerS+2),bh=groundH(px,playerS-2);
     var pitch=Math.atan2(ah-bh,4);
     bikeBody.rotation.x+=((jumping?-jumpY*0.02:pitch*0.8)-bikeBody.rotation.x)*Math.min(1,dt*6);
-    bikeBody.rotation.z+=(bank-bikeBody.rotation.z)*Math.min(1,dt*8);
+    nmKick*=Math.exp(-4*dt);
+    bikeBody.rotation.z+=(bank+nmKick-bikeBody.rotation.z)*Math.min(1,dt*8);
     bikeBody.rotation.y+=((-steerVel*0.02)-bikeBody.rotation.y)*Math.min(1,dt*6);
     wheelF.rotation.x-=speed*dt*1.8;wheelB.rotation.x-=speed*dt*1.8;
     scarf.rotation.x=1.9+Math.sin(bob*1.7)*0.25;
@@ -459,6 +521,9 @@ function animate(){
     spawnAhead();
     // combo decay
     if(combo>0){comboT-=dt;if(comboT<=0){combo=0;updateComboBadge();}}
+    // polled missions (dist/score/combo/nohit) at 0.3s + biome shift
+    mRedrawT-=dt;if(mRedrawT<=0){mRedrawT=0.3;missionPoll();}
+    biomeUpdate(dt);
     // distance milestones + new best
     if(playerS>=nextMile){banner(nextMile+'m!');fanfare();nextMile+=500;}
     if(!bestShown&&best>0&&Math.floor(score)>best){bestShown=true;banner('NEW BEST!');fanfare();setTimeout(fanfare,260);}
@@ -471,7 +536,7 @@ function animate(){
       if(Math.abs(o.s-playerS)<7){var tlat=px-pathCenterX(o.s);var dlat=tlat-o.lat;if(Math.abs(dlat)>0.05&&Math.abs(dlat)<1.7)o.lat+=dlat*Math.min(1,dt*5);}
       var ox=pathCenterX(o.s)+o.lat;var oy=groundH(ox,o.s)+o.dy+Math.sin(bob*2+o.s)*0.15;
       o.m.position.set(ox,oy,-o.s);o.m.rotation.y+=dt*3;
-      if(Math.abs(o.s-playerS)<1.3&&Math.abs(ox-px)<1.6&&Math.abs(oy-py)<1.9){o.on=false;o.m.visible=false;combo++;comboT=2.5;var mult=Math.min(5,combo);var pts=50*mult;score+=pts;chime(mult);puff(ox,oy,-o.s,true);missionTick('orbs');popup('+'+pts,ox,oy+0.6,-o.s,mult>=3?'#ff9d3c':'#ffd94d','orb');updateComboBadge();}
+      if(Math.abs(o.s-playerS)<1.3&&Math.abs(ox-px)<1.6&&Math.abs(oy-py)<1.9){o.on=false;o.m.visible=false;combo++;comboT=2.5;if(combo>maxCombo)maxCombo=combo;var mult=Math.min(5,combo);var pts=50*mult;score+=pts;chime(mult);puff(ox,oy,-o.s,true);missionTick('orbs');popup('+'+pts,ox,oy+0.6,-o.s,mult>=3?'#ff9d3c':'#ffd94d','orb');updateComboBadge();}
     }
     if(invuln<=0){
       for(i=0;i<rocks.length;i++){r=rocks[i];if(!r.on)continue;
@@ -533,6 +598,7 @@ function animate(){
   }
   // dust update
   for(var i=0;i<dust.length;i++){var d=dust[i];if(d.life>0){d.life-=dt*2.4;d.m.position.y+=dt*1.2;var sc=d.m.scale.x+dt*1.0;d.m.scale.setScalar(sc);if(d.life<=0)d.m.visible=false;}}
+for(var i=0;i<sparks.length;i++){var s=sparks[i];if(s.life>0){s.life-=dt;s.m.position.x+=s.vx*dt;s.m.position.y+=s.vy*dt;s.m.position.z+=s.vz*dt;s.vy-=9*dt;s.m.material.opacity=Math.max(0,s.life/0.6)*0.95;if(s.life<=0)s.m.visible=false;}}
   renderer.render(scene,camera);
 }
 function hit(){
@@ -541,7 +607,7 @@ function hit(){
   beep(140,0.25,'square',0.14);drawHearts();
   var hf=document.getElementById('hitflash');hf.classList.remove('go');void hf.offsetWidth;hf.classList.add('go');
   var he=document.getElementById('hearts');he.classList.remove('shake');void he.offsetWidth;he.classList.add('shake');
-  camShake=0.55;
+  camShake=0.55;lastHitS=playerS;
   for(var i=0;i<4;i++)puff(bike.position.x,bike.position.y,bike.position.z,true);
   if(hearts<=0)gameOver();
 }
