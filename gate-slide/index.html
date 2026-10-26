@@ -27,7 +27,7 @@
   .spark{position:absolute;pointer-events:none;font-weight:900;z-index:9;animation:popf .8s ease-out forwards;font-size:20px;text-shadow:0 2px 0 rgba(0,0,0,.15)}
   @keyframes popf{0%{opacity:1;transform:translateY(0) scale(.6)}100%{opacity:0;transform:translateY(-46px) scale(1.3)}}
   #hintArrow{position:absolute;z-index:8;pointer-events:none;font-size:44px;font-weight:900;color:#ff5d00;text-shadow:0 3px 0 #fff,0 0 14px #ffd94d;animation:har .6s infinite alternate ease-in-out;display:none}
-  @keyframes har{from{transform:translate(0,0) scale(1)}to{transform:translate(var(--dx),var(--dy)) scale(1.15)}}
+  @keyframes har{from{translate:0 0;scale:1}to{translate:var(--dx,0px) var(--dy,0px);scale:1.15}}
   /* ---------- bottom bar ---------- */
   #bbar{display:flex;gap:14px;margin-top:14px}
   .bbtn{background:linear-gradient(180deg,#ffd94d,#ff9d3c);border:4px solid #fff;border-radius:18px;color:#7a3c00;font-weight:900;font-size:16px;padding:10px 20px;cursor:pointer;box-shadow:0 5px 0 rgba(60,90,140,.28)}
@@ -131,10 +131,10 @@ var LEVELS=[
  {t:120,hints:3,blocks:[['P',0,1,1,1],['B',1,1,2,1],['R',3,2,1,2],['G',4,4,2,1]],gates:[['P','R',0],['B','T',1],['R','L',3],['G','B',4]]},
  {t:150,hints:3,blocks:[['R',0,2,1,2],['B',1,0,2,1],['G',3,1,1,3],['Y',2,5,3,1],['O',1,5,1,1],['P',5,2,1,2]],gates:[['R','R',0],['B','B',0],['G','L',3],['Y','T',5],['O','R',1],['P','R',5]]},
  {t:164,hints:4,blocks:[['R',3,4,2,1],['B',5,2,1,2],['G',2,2,1,3],['Y',1,2,1,1],['O',6,1,1,1],['P',3,3,2,1]],gates:[['R','T',4],['B','L',5],['G','L',2],['Y','L',1],['O','R',6],['P','T',3]]},
- {t:178,hints:4,blocks:[['R',4,1,1,2],['B',5,3,1,3],['G',1,2,3,1],['Y',6,3,1,2],['O',3,0,1,1],['P',2,6,2,1],['R',6,5,1,1]],gates:[['R','R',4],['B','L',5],['G','B',2],['Y','L',6],['O','B',0],['P','B',6],['R','R',6]]},
- {t:192,hints:5,blocks:[['R',3,3,2,1],['B',2,4,1,2],['G',3,6,1,1],['Y',4,0,2,1],['O',6,4,1,2],['P',0,3,1,3],['R',2,2,1,2],['B',4,1,2,1]],gates:[['R','B',3],['B','R',2],['G','T',6],['Y','B',0],['O','L',6],['P','R',0],['R','L',2],['B','T',1]]},
- {t:206,hints:5,blocks:[['R',4,5,1,1],['B',3,4,1,2],['G',1,3,2,1],['Y',6,1,1,2],['O',2,6,2,1],['P',1,5,2,1],['R',0,2,1,2],['B',1,6,1,1],['G',4,0,2,1]],gates:[['R','B',5],['B','L',3],['G','B',3],['Y','R',6],['O','B',6],['P','T',5],['R','R',0],['B','T',6],['G','T',0]]},
- {t:220,hints:5,blocks:[['R',3,4,1,2],['B',3,6,1,1],['G',6,1,1,3],['Y',2,4,1,2],['O',4,3,1,1],['P',0,1,1,2],['R',4,0,2,1],['B',1,2,1,1],['G',4,1,2,1],['Y',5,2,1,2]],gates:[['R','L',3],['B','B',6],['G','R',6],['Y','L',2],['O','T',3],['P','L',0],['R','T',0],['B','L',1],['G','T',1],['Y','L',5]]}
+ {t:178,hints:4,blocks:[['R',5,1,1,3],['B',2,0,1,2],['G',0,3,2,1],['Y',0,0,1,3],['O',3,1,2,1],['P',3,5,1,2],['R',1,2,1,1]],gates:[['R','R',5],['B','R',2],['G','B',3],['Y','R',0],['O','T',1],['P','L',3],['R','R',1]]},
+ {t:192,hints:5,blocks:[['R',2,1,2,1],['B',3,4,3,1],['G',3,2,1,2],['Y',0,2,1,1],['O',0,4,1,2],['P',5,5,2,1],['R',1,3,2,1],['B',6,0,1,1]],gates:[['R','B',1],['B','B',4],['G','R',3],['Y','B',2],['O','L',0],['P','T',5],['R','B',3],['B','R',6]]},
+ {t:206,hints:5,blocks:[['R',2,2,1,2],['B',1,4,1,2],['G',5,5,1,1],['Y',3,3,2,1],['O',5,2,1,2],['P',3,2,2,1],['R',4,0,1,2],['B',5,1,2,1],['G',5,0,2,1]],gates:[['R','L',2],['B','R',1],['G','T',5],['Y','T',3],['O','R',5],['P','B',2],['R','R',4],['B','T',1],['G','T',0]]},
+ {t:220,hints:5,blocks:[['R',6,4,1,2],['B',2,0,3,1],['G',3,1,1,2],['Y',4,3,1,3],['O',1,5,3,1],['P',1,3,2,1],['R',0,2,2,1],['B',1,4,2,1],['G',1,1,2,1],['Y',0,5,1,2]],gates:[['R','R',6],['B','T',0],['G','L',3],['Y','L',4],['O','B',5],['P','B',3],['R','B',2],['B','B',4],['G','B',1],['Y','L',0]]}
 ];
 // ---------- state ----------
 var level=0,blocks=[],gates=[],score=0,best=parseInt(localStorage.getItem('gs_best')||'0'),unlocked=parseInt(localStorage.getItem('gs_lvl')||'0');
@@ -400,4 +400,4 @@ window.__gs={solve:solve,blocks:function(){return blocks;},loadLevel:loadLevel,t
 })();
 </script>
 </body>
-  </html>
+</html>
