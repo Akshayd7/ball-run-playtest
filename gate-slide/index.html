@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Gate Slide</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;font-family:'Trebuchet MS','Comic Sans MS',sans-serif}
+  html,body{height:100%;overflow:hidden}
+  body{background:linear-gradient(180deg,#8ed4ff 0%,#cfeaff 55%,#eaf7ff 100%);display:flex;flex-direction:column;align-items:center}
+  /* ---------- HUD ---------- */
+  #hud{width:100%;max-width:520px;display:flex;align-items:center;justify-content:space-between;padding:10px 12px;gap:8px}
+  .pill{background:rgba(255,255,255,.85);border-radius:16px;padding:6px 12px;font-weight:900;color:#33507a;font-size:16px;box-shadow:0 3px 0 rgba(60,90,140,.25)}
+  #timer.warn{color:#e33}
+  .rbtn{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.9);border:none;color:#33507a;font-size:17px;font-weight:900;cursor:pointer;box-shadow:0 3px 0 rgba(60,90,140,.25);display:flex;align-items:center;justify-content:center}
+  .rbtn:active{transform:translateY(2px);box-shadow:none}
+  /* ---------- board ---------- */
+  #wrap{position:relative;margin-top:2px}
+  #board{position:relative;background:#fff;border-radius:18px;box-shadow:0 8px 0 rgba(60,90,140,.22),inset 0 0 0 6px #fff}
+  .cell{position:absolute;border-radius:8px;background:#eef5fb}
+  .blk{position:absolute;border-radius:14px;cursor:pointer;transition:left .28s cubic-bezier(.2,.9,.3,1.15),top .28s cubic-bezier(.2,.9,.3,1.15),opacity .3s,transform .3s;box-shadow:0 4px 0 rgba(0,0,0,.18),inset 0 -6px 0 rgba(0,0,0,.12),inset 0 5px 0 rgba(255,255,255,.35);z-index:3;touch-action:none}
+  .blk.sel{animation:wob .5s infinite alternate ease-in-out;z-index:4}
+  @keyframes wob{from{transform:scale(1)}to{transform:scale(1.05)}}
+  .blk.out{opacity:0;transform:scale(.4)}
+  .gate{position:absolute;z-index:2;display:flex;align-items:center;justify-content:center}
+  .gate .tri{width:0;height:0}
+  .spark{position:absolute;pointer-events:none;font-weight:900;z-index:9;animation:popf .8s ease-out forwards;font-size:20px;text-shadow:0 2px 0 rgba(0,0,0,.15)}
+  @keyframes popf{0%{opacity:1;transform:translateY(0) scale(.6)}100%{opacity:0;transform:translateY(-46px) scale(1.3)}}
+  #hintArrow{position:absolute;z-index:8;pointer-events:none;font-size:44px;font-weight:900;color:#ff5d00;text-shadow:0 3px 0 #fff,0 0 14px #ffd94d;animation:har .6s infinite alternate ease-in-out;display:none}
+  @keyframes har{from{transform:translate(0,0) scale(1)}to{transform:translate(var(--dx),var(--dy)) scale(1.15)}}
+  /* ---------- bottom bar ---------- */
+  #bbar{display:flex;gap:14px;margin-top:14px}
+  .bbtn{background:linear-gradient(180deg,#ffd94d,#ff9d3c);border:4px solid #fff;border-radius:18px;color:#7a3c00;font-weight:900;font-size:16px;padding:10px 20px;cursor:pointer;box-shadow:0 5px 0 rgba(60,90,140,.28)}
+  .bbtn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(60,90,140,.28)}
+  .bbtn:disabled{filter:grayscale(.7);opacity:.6}
+  #moves{color:#33507a;font-weight:900;margin-top:10px;font-size:15px;opacity:.85}
+  /* ---------- overlays ---------- */
+  .ovl{position:fixed;inset:0;background:rgba(40,70,110,.55);display:flex;align-items:center;justify-content:center;z-index:50}
+  .card{background:#fff;border-radius:26px;padding:26px 30px;text-align:center;max-width:86vw;box-shadow:0 12px 0 rgba(30,50,90,.35)}
+  .card h1{font-size:34px;color:#ff9d3c;text-shadow:0 3px 0 #ffe6b8;margin-bottom:8px;letter-spacing:1px}
+  .card h2{font-size:24px;color:#33507a;margin-bottom:10px}
+  .card p{font-size:16px;color:#5a7396;font-weight:700;line-height:1.5;margin-bottom:14px}
+  .bigbtn{background:linear-gradient(180deg,#66e07c,#2fb84f);border:4px solid #fff;border-radius:20px;color:#fff;font-weight:900;font-size:21px;padding:12px 34px;cursor:pointer;box-shadow:0 6px 0 rgba(20,80,40,.4);text-shadow:0 2px 0 rgba(0,0,0,.2)}
+  .bigbtn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(20,80,40,.4)}
+  .ghostbtn{background:#e8f1fa;border:3px solid #b8d2ea;border-radius:16px;color:#33507a;font-weight:900;font-size:15px;padding:8px 18px;cursor:pointer;margin-top:10px}
+  .stars{font-size:0;margin:6px 0 10px}
+  .star{display:inline-block;width:44px;height:44px;margin:0 4px}
+  .star svg{width:100%;height:100%}
+  .hidden{display:none!important}
+  .howto{text-align:left;font-size:15px}
+  .howto b{color:#ff9d3c}
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="pill" id="lvl">LEVEL 1</div>
+  <div class="pill" id="timer">2:00</div>
+  <div class="pill" id="score">0</div>
+  <button class="rbtn" id="pausebtn" aria-label="Pause">| |</button>
+  <button class="rbtn" id="mutebtn" aria-label="Mute">S</button>
+</div>
+<div id="wrap">
+  <div id="board"></div>
+  <div id="hintArrow">&#10140;</div>
+</div>
+<div id="bbar">
+  <button class="bbtn" id="hintbtn">HINT (<span id="hints">3</span>)</button>
+  <button class="bbtn" id="restartbtn">RESTART</button>
+</div>
+<div id="moves">MOVES 0</div>
+
+<div class="ovl" id="menu">
+  <div class="card">
+    <h1>GATE SLIDE</h1>
+    <p class="howto"><b>Swipe a block</b> to slide it.<br>Blocks slide until they bump something.<br>Slide each block out through the <b>gate of the same color</b>.<br>Clear every block before time runs out!</p>
+    <button class="bigbtn" id="playbtn">PLAY</button><br>
+    <button class="ghostbtn" id="howbtn">HOW TO PLAY</button>
+    <p id="bestline" style="margin-top:12px;margin-bottom:0"></p>
+  </div>
+</div>
+<div class="ovl hidden" id="howto">
+  <div class="card">
+    <h2>HOW TO PLAY</h2>
+    <p class="howto">1. <b>Swipe</b> a colored block up, down, left or right. It slides until something stops it.<br><br>2. A block leaves the board only through the <b>gate with the same color</b> on the edge.<br><br>3. Blocks can block each other - think about the <b>order</b>!<br><br>4. Clear all blocks before the timer ends. Stuck? Use a <b>HINT</b>.</p>
+    <button class="bigbtn" id="howok">GOT IT!</button>
+  </div>
+</div>
+<div class="ovl hidden" id="win">
+  <div class="card">
+    <h1 id="winTitle">LEVEL CLEAR!</h1>
+    <div class="stars" id="stars"></div>
+    <p id="winInfo"></p>
+    <button class="bigbtn" id="nextbtn">NEXT LEVEL</button>
+  </div>
+</div>
+<div class="ovl hidden" id="over">
+  <div class="card">
+    <h1>GAME OVER</h1>
+    <p id="overInfo">Time is up!</p>
+    <button class="bigbtn" id="retrybtn">TRY AGAIN</button><br>
+    <button class="ghostbtn" id="menubtn">MENU</button>
+  </div>
+</div>
+<div class="ovl hidden" id="paused">
+  <div class="card">
+    <h2>PAUSED</h2>
+    <button class="bigbtn" id="resumebtn">RESUME</button><br>
+    <button class="ghostbtn" id="quitbtn">MENU</button>
+  </div>
+</div>
+<script>
+(function(){
+'use strict';
+// ---------- audio ----------
+var AC=null,muted=localStorage.getItem('gs_mute')==='1';
+function ac(){if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();return AC;}
+function beep(f,d,t,v){if(muted)return;try{var a=ac(),o=a.createOscillator(),g=a.createGain();o.type=t||'sine';o.frequency.value=f;g.gain.setValueAtTime(v||0.08,a.currentTime);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+d);o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+d);}catch(e){}}
+function slideSnd(){beep(300,0.08,'triangle',0.06);}
+function exitSnd(){beep(700,0.09,'sine',0.09);setTimeout(function(){beep(1050,0.12,'sine',0.08);},70);}
+function fanfare(){[523,659,784,1047].forEach(function(f,i){setTimeout(function(){beep(f,0.16,'triangle',0.09);},i*110);});}
+function badSnd(){beep(220,0.25,'sawtooth',0.05);setTimeout(function(){beep(160,0.35,'sawtooth',0.05);},200);}
+function clickSnd(){beep(600,0.05,'square',0.04);}
+
+// ---------- data ----------
+var COLORS={R:'#ff5d73',B:'#4d9fff',G:'#43d17c',Y:'#ffd94d',O:'#ff9d3c',P:'#b678ff'};
+var DARK={R:'#c23249',B:'#2a6fd1',G:'#1f9e52',Y:'#d8a700',O:'#d96e00',P:'#8a4fd1'};
+var N=7;
+// blocks: [color,row,col,h,w] ; gates: [color,edge,idx] edge: T/B/L/R, idx=row or col of gate cell
+var LEVELS=[
+ {t:90,hints:3,blocks:[['B',2,3,2,1],['R',5,4,1,2]],gates:[['B','T',3],['R','R',5]]},
+ {t:120,hints:3,blocks:[['P',0,1,1,1],['B',1,1,2,1],['R',3,2,1,2],['G',4,4,2,1]],gates:[['P','R',0],['B','T',1],['R','L',3],['G','B',4]]},
+ {t:150,hints:3,blocks:[['R',0,2,1,2],['B',1,0,2,1],['G',3,1,1,3],['Y',2,5,3,1],['O',1,5,1,1],['P',5,2,1,2]],gates:[['R','R',0],['B','B',0],['G','L',3],['Y','T',5],['O','R',1],['P','R',5]]},
+ {t:164,hints:4,blocks:[['R',3,4,2,1],['B',5,2,1,2],['G',2,2,1,3],['Y',1,2,1,1],['O',6,1,1,1],['P',3,3,2,1]],gates:[['R','T',4],['B','L',5],['G','L',2],['Y','L',1],['O','R',6],['P','T',3]]},
+ {t:178,hints:4,blocks:[['R',4,1,1,2],['B',5,3,1,3],['G',1,2,3,1],['Y',6,3,1,2],['O',3,0,1,1],['P',2,6,2,1],['R',6,5,1,1]],gates:[['R','R',4],['B','L',5],['G','B',2],['Y','L',6],['O','B',0],['P','B',6],['R','R',6]]},
+ {t:192,hints:5,blocks:[['R',3,3,2,1],['B',2,4,1,2],['G',3,6,1,1],['Y',4,0,2,1],['O',6,4,1,2],['P',0,3,1,3],['R',2,2,1,2],['B',4,1,2,1]],gates:[['R','B',3],['B','R',2],['G','T',6],['Y','B',0],['O','L',6],['P','R',0],['R','L',2],['B','T',1]]},
+ {t:206,hints:5,blocks:[['R',4,5,1,1],['B',3,4,1,2],['G',1,3,2,1],['Y',6,1,1,2],['O',2,6,2,1],['P',1,5,2,1],['R',0,2,1,2],['B',1,6,1,1],['G',4,0,2,1]],gates:[['R','B',5],['B','L',3],['G','B',3],['Y','R',6],['O','B',6],['P','T',5],['R','R',0],['B','T',6],['G','T',0]]},
+ {t:220,hints:5,blocks:[['R',3,4,1,2],['B',3,6,1,1],['G',6,1,1,3],['Y',2,4,1,2],['O',4,3,1,1],['P',0,1,1,2],['R',4,0,2,1],['B',1,2,1,1],['G',4,1,2,1],['Y',5,2,1,2]],gates:[['R','L',3],['B','B',6],['G','R',6],['Y','L',2],['O','T',3],['P','L',0],['R','T',0],['B','L',1],['G','T',1],['Y','L',5]]}
+];
+// ---------- state ----------
+var level=0,blocks=[],gates=[],score=0,best=parseInt(localStorage.getItem('gs_best')||'0'),unlocked=parseInt(localStorage.getItem('gs_lvl')||'0');
+var timeLeft=0,timerId=null,moves=0,hintsLeft=3,sel=null,running=false,paused=false,cell=0,bx=0,by=0;
+var board=document.getElementById('board'),wrap=document.getElementById('wrap');
+
+function layout(){
+  var s=Math.min(window.innerWidth-56,window.innerHeight-260,440);s=Math.max(240,s);
+  cell=Math.floor(s/N);
+  var bs=cell*N+12;
+  board.style.width=bs+'px';board.style.height=bs+'px';
+  bx=6;by=6;
+}
+// ---------- build level ----------
+function loadLevel(lv){
+  level=lv;var L=LEVELS[lv];
+  blocks=L.blocks.map(function(b,i){return {id:i,c:b[0],r:b[1],q:b[2],h:b[3],w:b[4],out:false,el:null};});
+  gates=L.gates.map(function(g){return {c:g[0],e:g[1],i:g[2]};});
+  timeLeft=L.t;hintsLeft=L.hints;moves=0;sel=null;paused=false;
+  document.getElementById('lvl').textContent='LEVEL '+(lv+1);
+  document.getElementById('hints').textContent=hintsLeft;
+  document.getElementById('moves').textContent='MOVES 0';
+  document.getElementById('hintbtn').disabled=false;
+  layout();render();startTimer();
+  running=true;
+}
+function render(){
+  board.innerHTML='';
+  // cells
+  for(var r=0;r<N;r++)for(var c=0;c<N;c++){
+    var d=document.createElement('div');d.className='cell';
+    d.style.left=(bx+c*cell+3)+'px';d.style.top=(by+r*cell+3)+'px';
+    d.style.width=(cell-6)+'px';d.style.height=(cell-6)+'px';
+    board.appendChild(d);
+  }
+  // gates
+  gates.forEach(function(g){
+    var gd=document.createElement('div');gd.className='gate';
+    var col=COLORS[g.c],off=10;
+    if(g.e==='T'){gd.style.left=(bx+g.i*cell+3)+'px';gd.style.top=(-off)+'px';gd.style.width=(cell-6)+'px';gd.style.height='14px';}
+    if(g.e==='B'){gd.style.left=(bx+g.i*cell+3)+'px';gd.style.top=(N*cell+6+off-14)+'px';gd.style.width=(cell-6)+'px';gd.style.height='14px';}
+    if(g.e==='L'){gd.style.left=(-off)+'px';gd.style.top=(by+g.i*cell+3)+'px';gd.style.width='14px';gd.style.height=(cell-6)+'px';}
+    if(g.e==='R'){gd.style.left=(N*cell+6+off-14)+'px';gd.style.top=(by+g.i*cell+3)+'px';gd.style.width='14px';gd.style.height=(cell-6)+'px';}
+    gd.style.background=col;gd.style.borderRadius='7px';gd.style.boxShadow='0 0 0 2px #fff,0 0 10px '+col;
+    board.appendChild(gd);
+  });
+  // blocks
+  blocks.forEach(function(b){
+    if(b.out)return;
+    var el=document.createElement('div');el.className='blk';el.dataset.id=b.id;
+    el.style.background='linear-gradient(180deg,'+COLORS[b.c]+','+DARK[b.c]+')';
+    el.style.width=(b.w*cell-10)+'px';el.style.height=(b.h*cell-10)+'px';
+    el.style.left=(bx+b.q*cell+5)+'px';el.style.top=(by+b.r*cell+5)+'px';
+    board.appendChild(el);b.el=el;
+  });
+}
+function place(b){if(!b.el)return;b.el.style.left=(bx+b.q*cell+5)+'px';b.el.style.top=(by+b.r*cell+5)+'px';}
+// ---------- grid helpers ----------
+function occ(except){
+  var g=Array.from({length:N},function(){return new Array(N).fill(-1);});
+  blocks.forEach(function(b){if(b.out||b.id===except)return;
+    for(var r=b.r;r<b.r+b.h;r++)for(var c=b.q;c<b.q+b.w;c++)g[r][c]=b.id;});
+  return g;
+}
+function gateAt(edge,idx,color){for(var i=0;i<gates.length;i++){var g=gates[i];if(g.e===edge&&g.i===idx&&g.c===color)return g;}return null;}
+// slide result: {r,q,exit} - furthest position sliding dir from (r,q); exit=true if leaves through own gate
+function slideDest(b,dr,dc,g){
+  var r=b.r,q=b.q;
+  while(true){
+    var nr=r+dr,nq=q+dc;
+    // leaving board?
+    if(nr<0||nq<0||nr+b.h>N||nq+b.w>N){
+      // check exit: block at boundary, moving outward, gate matches on that edge at boundary cells
+      var edge=dr<0?'T':(dr>0?'B':(dc<0?'L':'R'));
+      var idx=(edge==='T'||edge==='B')?q:r;
+      // block must be exactly 1 cell thick along gate axis and fully on boundary
+      var thick=(edge==='T'||edge==='B')?b.w:b.h;
+      if(thick!==1)return {r:r,q:q,exit:false};
+      if(gateAt(edge,idx,b.c))return {r:nr,q:nq,exit:true};
+      return {r:r,q:q,exit:false};
+    }
+    // collision?
+    var hit=false;
+    for(var rr=nr;rr<nr+b.h&&!hit;rr++)for(var cc=nq;cc<nq+b.w&&!hit;cc++)if(g[rr][cc]!==-1)hit=true;
+    if(hit)return {r:r,q:q,exit:false};
+    r=nr;q=nq;
+    // mid-slide exit check: if block is 1-thick and its boundary cell is on its gate and it keeps moving outward next step
+  }
+}
+function trySlide(b,dr,dc){
+  var g=occ(b.id);
+  var d=slideDest(b,dr,dc,g);
+  if(d.r===b.r&&d.q===b.q&&!d.exit){badSnd();return false;}
+  moves++;document.getElementById('moves').textContent='MOVES '+moves;
+  hideHint();
+  if(d.exit){
+    b.out=true;b.r=d.r;b.q=d.q;
+    slideSnd();exitSnd();
+    b.el.style.transition='left .3s ease-in,top .3s ease-in,opacity .3s .15s,transform .3s';
+    place(b);b.el.classList.add('out');
+    score+=100;document.getElementById('score').textContent=score;
+    var gr=Math.max(0,Math.min(N-1,d.r)),gq=Math.max(0,Math.min(N-1,d.q));
+    sparkle(bx+gq*cell+cell/2,by+gr*cell+cell/2,'+100',COLORS[b.c]);
+    if(sel===b)sel=null;
+    setTimeout(function(){if(blocks.every(function(x){return x.out;}))winLevel();},420);
+  }else{
+    b.r=d.r;b.q=d.q;slideSnd();place(b);
+  }
+  return true;
+}
+function sparkle(x,y,txt,col){
+  var s=document.createElement('div');s.className='spark';s.textContent=txt;s.style.color=col;
+  s.style.left=(x-20)+'px';s.style.top=(y-14)+'px';wrap.appendChild(s);
+  setTimeout(function(){s.remove();},850);
+}
+// ---------- input ----------
+var pd=null;
+board.addEventListener('pointerdown',function(e){
+  if(!running||paused)return;
+  var t=e.target.closest('.blk');
+  if(t){var b=blocks[parseInt(t.dataset.id)];sel&&sel.el&&sel.el.classList.remove('sel');sel=b;b.el.classList.add('sel');}
+  pd={x:e.clientX,y:e.clientY,b:sel};
+  e.preventDefault();
+});
+window.addEventListener('pointerup',function(e){
+  if(!pd)return;var dx=e.clientX-pd.x,dy=e.clientY-pd.y,p=pd;pd=null;
+  if(!running||paused||!p.b||p.b.out)return;
+  var adx=Math.abs(dx),ady=Math.abs(dy);
+  if(Math.max(adx,ady)<18)return; // plain tap = select only
+  var dr=0,dc=0;
+  if(adx>ady)dc=dx>0?1:-1;else dr=dy>0?1:-1;
+  trySlide(p.b,dr,dc);
+});
+// ---------- timer ----------
+function startTimer(){
+  clearInterval(timerId);updTimer();
+  timerId=setInterval(function(){
+    if(paused||!running)return;
+    timeLeft--;updTimer();
+    if(timeLeft<=0){gameOver();}
+  },1000);
+}
+function updTimer(){
+  var m=Math.floor(timeLeft/60),s=timeLeft%60;
+  var el=document.getElementById('timer');el.textContent=m+':'+(s<10?'0':'')+s;
+  el.classList.toggle('warn',timeLeft<=20);
+}
+// ---------- win / over ----------
+function starSVG(fill){return '<span class="star"><svg viewBox="0 0 24 24"><path fill="'+fill+'" stroke="#fff" stroke-width="1.2" d="M12 2l2.9 6.2 6.6.8-4.9 4.6 1.3 6.5L12 16.9 6.1 20l1.3-6.5L2.5 9l6.6-.8z"/></svg></span>';}
+function winLevel(){
+  running=false;clearInterval(timerId);fanfare();
+  var bonus=timeLeft*5;score+=bonus;
+  var L=LEVELS[level],stars=1;
+  if(moves<=L.blocks.length+2)stars=3;else if(moves<=L.blocks.length*2)stars=2;
+  document.getElementById('stars').innerHTML=starSVG(stars>=1?'#ffd94d':'#d7e3ee')+starSVG(stars>=2?'#ffd94d':'#d7e3ee')+starSVG(stars>=3?'#ffd94d':'#d7e3ee');
+  document.getElementById('winInfo').innerHTML='Time bonus +'+bonus+'<br>Score '+score;
+  var last=level>=LEVELS.length-1;
+  document.getElementById('winTitle').textContent=last?'YOU WIN!':'LEVEL CLEAR!';
+  document.getElementById('nextbtn').textContent=last?'PLAY AGAIN':'NEXT LEVEL';
+  document.getElementById('win').classList.remove('hidden');
+  if(score>best){best=score;localStorage.setItem('gs_best',String(best));}
+  unlocked=Math.max(unlocked,Math.min(level+1,LEVELS.length-1));localStorage.setItem('gs_lvl',String(unlocked));
+}
+function gameOver(){
+  running=false;clearInterval(timerId);badSnd();
+  if(score>best){best=score;localStorage.setItem('gs_best',String(best));}
+  document.getElementById('overInfo').innerHTML='Time is up!<br>Score '+score+' &nbsp; Best '+best;
+  document.getElementById('over').classList.remove('hidden');
+}
+// ---------- solver (hint + QA) ----------
+function keyOf(st){return st.map(function(p){return p===null?'X':p[0]+','+p[1];}).join('|');}
+function simSlide(st,i,dr,dc){
+  var b=blocks[i];
+  var g=Array.from({length:N},function(){return new Array(N).fill(-1);});
+  for(var j=0;j<blocks.length;j++){if(j===i||st[j]===null)continue;var bj=blocks[j];for(var r=st[j][0];r<st[j][0]+bj.h;r++)for(var c=st[j][1];c<st[j][1]+bj.w;c++)g[r][c]=j;}
+  var tb={c:b.c,h:b.h,w:b.w,r:st[i][0],q:st[i][1],id:i};
+  return slideDest(tb,dr,dc,g);
+}
+function solve(){
+  var start=blocks.map(function(b){return b.out?null:[b.r,b.q];});
+  if(start.every(function(p){return p===null;}))return null;
+  // greedy pass: repeatedly exit any directly-exitable block (fast, matches level design)
+  var gst=start.map(function(p){return p&&p.slice();});var gpath=[];
+  var moved=true;
+  while(moved){
+    moved=false;
+    for(var i=0;i<blocks.length;i++){
+      if(gst[i]===null)continue;
+      for(var d=0;d<4;d++){
+        var res=simSlide(gst,i,[-1,0,0,1][d],[0,-1,1,0][d]);
+        if(res.exit){gpath.push({b:i,dr:[-1,0,0,1][d],dc:[0,-1,1,0][d]});gst[i]=null;moved=true;break;}
+      }
+      if(moved)break;
+    }
+  }
+  if(gst.every(function(p){return p===null;}))return gpath;
+  // BFS fallback (user scrambled state)
+  var seen={},qq=[start],head=0;seen[keyOf(start)]=true;var parent={},parentMove={},maxNodes=80000,nodes=0;
+  var dirs=[[-1,0],[1,0],[0,-1],[0,1]];
+  while(head<qq.length&&nodes<maxNodes){
+    var st=qq[head++];nodes++;
+    for(var i=0;i<blocks.length;i++){
+      if(st[i]===null)continue;
+      for(var d=0;d<4;d++){
+        var res=simSlide(st,i,dirs[d][0],dirs[d][1]);
+        if(res.r===st[i][0]&&res.q===st[i][1]&&!res.exit)continue;
+        var ns=st.slice();ns[i]=res.exit?null:[res.r,res.q];
+        var k=keyOf(ns);
+        if(seen[k])continue;
+        seen[k]=true;parent[k]=st;parentMove[k]={b:i,dr:dirs[d][0],dc:dirs[d][1]};
+        if(ns.every(function(p){return p===null;})){
+          var cur=k,path=[];
+          while(parentMove[cur]){path.unshift(parentMove[cur]);cur=keyOf(parent[cur]);}
+          return path;
+        }
+        qq.push(ns);
+      }
+    }
+  }
+  return null;
+}
+var hintTimer=null;
+function hideHint(){var h=document.getElementById('hintArrow');h.style.display='none';clearTimeout(hintTimer);}
+function showHint(){
+  if(hintsLeft<=0||!running||paused)return;
+  var path=solve();
+  if(!path||!path.length){badSnd();return;}
+  hintsLeft--;document.getElementById('hints').textContent=hintsLeft;
+  if(hintsLeft<=0)document.getElementById('hintbtn').disabled=true;
+  var mv=path[0],b=blocks[mv.b];
+  sel&&sel.el&&sel.el.classList.remove('sel');sel=b;b.el&&b.el.classList.add('sel');
+  var h=document.getElementById('hintArrow');
+  var cx=bx+(b.q+b.w/2)*cell,cy=by+(b.r+b.h/2)*cell;
+  var ang=mv.dc>0?0:(mv.dc<0?180:(mv.dr>0?90:-90));
+  h.style.display='block';
+  h.style.transform='';
+  h.style.left=(cx-22)+'px';h.style.top=(cy-30)+'px';
+  h.style.setProperty('--dx',(mv.dc*16)+'px');h.style.setProperty('--dy',(mv.dr*16)+'px');
+  h.style.transform='rotate('+ang+'deg)';
+  h.style.transformOrigin='center';
+  // keep rotation out of the animation: wrap rotation in static transform on parent? simple: set rotation via separate css var
+  hintTimer=setTimeout(hideHint,2600);
+  beep(950,0.1,'sine',0.07);
+}
+// ---------- buttons ----------
+document.getElementById('playbtn').onclick=function(){clickSnd();document.getElementById('menu').classList.add('hidden');score=0;document.getElementById('score').textContent='0';loadLevel(unlocked);};
+document.getElementById('howbtn').onclick=function(){clickSnd();document.getElementById('howto').classList.remove('hidden');};
+document.getElementById('howok').onclick=function(){clickSnd();document.getElementById('howto').classList.add('hidden');};
+document.getElementById('nextbtn').onclick=function(){clickSnd();document.getElementById('win').classList.add('hidden');if(level>=LEVELS.length-1){score=0;document.getElementById('score').textContent='0';loadLevel(0);}else loadLevel(level+1);};
+document.getElementById('retrybtn').onclick=function(){clickSnd();document.getElementById('over').classList.add('hidden');loadLevel(level);};
+document.getElementById('menubtn').onclick=function(){clickSnd();document.getElementById('over').classList.add('hidden');document.getElementById('menu').classList.remove('hidden');updBest();};
+document.getElementById('pausebtn').onclick=function(){if(!running)return;clickSnd();paused=true;document.getElementById('paused').classList.remove('hidden');};
+document.getElementById('resumebtn').onclick=function(){clickSnd();paused=false;document.getElementById('paused').classList.add('hidden');};
+document.getElementById('quitbtn').onclick=function(){clickSnd();paused=false;running=false;clearInterval(timerId);document.getElementById('paused').classList.add('hidden');document.getElementById('menu').classList.remove('hidden');updBest();};
+document.getElementById('hintbtn').onclick=function(){showHint();};
+document.getElementById('restartbtn').onclick=function(){if(!running)return;clickSnd();loadLevel(level);};
+document.getElementById('mutebtn').onclick=function(){muted=!muted;localStorage.setItem('gs_mute',muted?'1':'0');updMute();clickSnd();};
+function updMute(){document.getElementById('mutebtn').textContent=muted?'X':'S';document.getElementById('mutebtn').style.opacity=muted?0.55:1;}
+function updBest(){document.getElementById('bestline').textContent=best>0?('BEST SCORE '+best+' - LEVEL '+(unlocked+1)+' READY'):'';}
+window.addEventListener('resize',function(){if(blocks.length){layout();render();}});
+updMute();updBest();
+window.__gs={solve:solve,blocks:function(){return blocks;},loadLevel:loadLevel,trySlide:trySlide,state:function(){return {level:level,score:score,moves:moves,timeLeft:timeLeft,out:blocks.map(function(b){return b.out;})};}};
+})();
+</script>
+</body>
+  </html>
