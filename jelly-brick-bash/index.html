@@ -9,30 +9,58 @@
   html, body { width: 100%; height: 100%; overflow: hidden; background: #241d4e; font-family: 'Segoe UI','Trebuchet MS',Roboto,Helvetica,Arial,sans-serif; touch-action: none; overscroll-behavior: none; }
   #game-container { position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; background: linear-gradient(#3b2f6b 0%, #7b4fd0 45%, #ff8fb3 100%); }
   canvas { display: block; }
-  #rotate-hint { display: none; position: fixed; left: 0; right: 0; bottom: 4%; text-align: center; color: #fff; font-weight: 700; font-size: 15px; letter-spacing: 1px; text-shadow: 0 2px 6px rgba(0,0,0,0.45); pointer-events: none; animation: rh-bob 1.6s ease-in-out infinite; z-index: 5; }
-  @keyframes rh-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-  #rotate-hint.on { display: block; }
 </style>
 </head>
 <body>
 <div id="game-container"><canvas id="game"></canvas></div>
-<div id="rotate-hint">ROTATE PHONE FOR FULL SCREEN</div>
 <script>
 "use strict";
 /* JELLY BRICK BASH v2 - original kids cartoon brick-breaker. Single file, no external assets. */
-var W = 800, H = 450;
+var W = 800, H = 450, IS_PORTRAIT = false;
 var canvas = document.getElementById("game");
 var ctx = canvas.getContext("2d");
 var DPR = Math.min(window.devicePixelRatio || 1, 2);
-var rotateHint = document.getElementById("rotate-hint");
 
 function resize() {
   var cw = window.innerWidth, ch = window.innerHeight;
+  var portrait = ch > cw;
+  if (portrait !== IS_PORTRAIT) {
+    IS_PORTRAIT = portrait;
+    if (portrait) {
+      W = 460;
+      H = Math.round(ch / (cw / 460));
+      H = Math.max(700, Math.min(1000, H));
+    } else { W = 800; H = 450; }
+    relayout();
+  }
   var scale = Math.min(cw / W, ch / H);
   var pw = Math.round(W * scale), ph = Math.round(H * scale);
   canvas.style.width = pw + "px"; canvas.style.height = ph + "px";
   canvas.width = Math.round(W * scale * DPR); canvas.height = Math.round(H * scale * DPR);
-  if (rotateHint) rotateHint.classList.toggle("on", ch > cw);
+}
+function gridParams(l) {
+  var cols = IS_PORTRAIT ? 7 : 9;
+  var bw = IS_PORTRAIT ? 58 : 74, bh = 26, gap = IS_PORTRAIT ? 6 : 8;
+  var ox = (W - (cols*bw + (cols-1)*gap))/2, oy = IS_PORTRAIT ? 116 : 70;
+  return { rows: levelRows(l), cols: cols, bw: bw, bh: bh, gap: gap, ox: ox, oy: oy };
+}
+function relayout() {
+  if (typeof bricks === "undefined" || typeof paddle === "undefined") return;
+  var gp = gridParams(level);
+  var cellW = gp.bw + gp.gap, cellH = gp.bh + gp.gap;
+  for (var i = 0; i < bricks.length; i++) {
+    var r = Math.floor(i / gp.cols), c = i % gp.cols;
+    bricks[i].x = gp.ox + c*cellW;
+    bricks[i].y = gp.oy + r*cellH;
+    bricks[i].w = gp.bw; bricks[i].h = gp.bh;
+  }
+  paddle.y = IS_PORTRAIT ? H - 70 : H - 34;
+  paddle.x = Math.max(paddle.w/2 + 6, Math.min(W - paddle.w/2 - 6, paddle.x));
+  balls.forEach(function(b){
+    if (b.stuck) { b.x = paddle.x; b.y = paddle.y - 14; }
+    else { b.x = Math.max(12, Math.min(W-12, b.x)); b.y = Math.max(12, Math.min(H-40, b.y)); }
+  });
+  powerups.forEach(function(p){ p.x = Math.max(12, Math.min(W-12, p.x)); });
 }
 window.addEventListener("resize", resize);
 window.addEventListener("orientationchange", function(){ setTimeout(resize, 60); });
@@ -129,7 +157,7 @@ var BRICK_COLORS = [
 ];
 var BRICK_HP2 = { top:"#9aa7ff", bot:"#4f46e5" };
 
-function levelRows(l) { return Math.min(4 + Math.ceil(l/2), 7); }
+function levelRows(l) { return Math.min(4 + Math.ceil(l/2), IS_PORTRAIT ? 8 : 7); }
 function ballSpeed(l) { return Math.min(265 + (l-1)*22, 430); }
 function brickValue(b) {
   if (b.kind === "star") return 50;
@@ -140,8 +168,9 @@ function brickValue(b) {
 
 function buildLevel(l) {
   bricks = []; powerups = []; particles = []; floaters = []; rings = [];
-  var rows = levelRows(l), cols = 9;
-  var bw = 74, bh = 26, gap = 8, ox = (W - (cols*bw + (cols-1)*gap))/2, oy = 70;
+  var gp = gridParams(l);
+  var rows = gp.rows, cols = gp.cols;
+  var bw = gp.bw, bh = gp.bh, gap = gp.gap, ox = gp.ox, oy = gp.oy;
   var starTarget = Math.min(2 + l, 5), starCount = 0;
   for (var r = 0; r < rows; r++) {
     for (var c = 0; c < cols; c++) {
@@ -201,7 +230,9 @@ function confetti(n) {
   }
 }
 function spawnFloater(x, y, text, color) {
-  floaters.push({ x: x, y: y, text: text, t: 0, color: color || "#fff" });
+  var n = 0;
+  floaters.forEach(function(f){ if (Math.abs(f.x - x) < 130 && f.t < 0.7) n++; });
+  floaters.push({ x: x, y: y - 24*n, text: text, t: 0, color: color || "#fff" });
 }
 function spawnPowerup(x, y) {
   var kinds = ["W","M","S","L","X","F"];
@@ -293,7 +324,8 @@ function onTap(x, y) {
   var gy = (y - r.top) / r.height * H;
   // mute button hit (top-right circle)
   var dx = gx - (W-30), dy = gy - 30;
-  if (dx*dx + dy*dy <= 20*20) { setMuted(!muted); return; }
+  var mr = IS_PORTRAIT ? 30 : 20;
+  if (dx*dx + dy*dy <= mr*mr) { setMuted(!muted); return; }
   if (state === STATE.START) { newGame(); return; }
   if (state === STATE.OVER || state === STATE.CLEAR) {
     if (state === STATE.OVER) maybeInterstitial(function(){ state = STATE.START; });
@@ -626,7 +658,7 @@ function drawHUD(t) {
   ctx.fillStyle = "#fff08a"; ctx.textAlign = "center"; ctx.font = "bold 14px sans-serif";
   ctx.fillText("LEVEL " + level, W/2, 30);
   // star bar: 10 segments toward FRENZY
-  var bx = W/2 - 60, bw2 = 120, bh2 = 10, by = 46;
+  var bx = W/2 - 50, bw2 = 120, bh2 = 10, by = 46;
   ctx.fillStyle = "rgba(36,29,78,0.6)";
   rr(bx, by, bw2, bh2, 5); ctx.fill();
   if (runStars > 0) {
@@ -639,13 +671,12 @@ function drawHUD(t) {
   ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 1.2;
   rr(bx, by, bw2, bh2, 5); ctx.stroke();
   drawStarIcon(bx - 12, by + 5, 8, runStars > 0, starBarPulse > 0);
-  if (scoreMult > 1) {
-    ctx.fillStyle = "#d3a6ff"; ctx.font = "bold 12px sans-serif";
-    ctx.fillText("x2 " + Math.ceil(scoreMultT) + "s", W/2, 72);
-  }
   if (frenzy > 0) {
     ctx.fillStyle = "#ffd166"; ctx.font = "bold 13px sans-serif";
     ctx.fillText("FRENZY " + Math.ceil(frenzy) + "s", W/2, 72);
+  } else if (scoreMult > 1) {
+    ctx.fillStyle = "#d3a6ff"; ctx.font = "bold 12px sans-serif";
+    ctx.fillText("x2 " + Math.ceil(scoreMultT) + "s", W/2, 72);
   }
   // combo flame
   if (combo >= 8) {
@@ -693,11 +724,11 @@ function drawBrick(b, t) {
     ctx.fill();
     ctx.restore();
   } else if (b.kind === "cage") {
-    drawFace(b.x + b.w/2, yy + b.h/2, 1.05, b.hp < b.maxhp ? "hurt" : "smile");
+    drawFace(b.x + b.w/2, yy + b.h/2, b.w > 70 ? 1.05 : 0.9, b.hp < b.maxhp ? "hurt" : "smile");
     ctx.fillStyle = "rgba(36,29,78,0.65)";
     for (var bi2 = 0; bi2 < 3; bi2++) ctx.fillRect(b.x + b.w*(0.25 + bi2*0.25) - 2, yy - 1, 4, b.h + 2);
   } else {
-    drawFace(b.x + b.w/2, yy + b.h/2, 1.15, b.hp < b.maxhp ? "hurt" : "smile");
+    drawFace(b.x + b.w/2, yy + b.h/2, b.w > 70 ? 1.15 : 0.95, b.hp < b.maxhp ? "hurt" : "smile");
   }
 }
 var POW_STYLE = { W:{c:"#b2f26d",l:"W"}, M:{c:"#7ee8fa",l:"x3"}, S:{c:"#fff08a",l:"S"}, L:{c:"#ff9fb2",l:"+1"}, X:{c:"#d3a6ff",l:"2x"}, F:{c:"#ff5d8f",l:"F!"} };
@@ -777,32 +808,34 @@ function draw() {
   if (state === STATE.START || state === STATE.OVER) {
     ctx.fillStyle = "rgba(36,29,78,0.5)"; ctx.fillRect(-10, -10, W+20, H+20);
     if (state === STATE.START) {
-      drawTitle("JELLY BRICK", W/2, H/2 - 96, 52, t);
-      drawTitle("BASH", W/2, H/2 - 44, 60, t + 1);
+      var sy = IS_PORTRAIT ? H*0.30 : H*0.28;
+      drawTitle("JELLY BRICK", W/2, sy, IS_PORTRAIT ? 40 : 52, t);
+      drawTitle("BASH", W/2, sy + (IS_PORTRAIT ? 46 : 54), IS_PORTRAIT ? 46 : 60, t + 1);
       ctx.textAlign = "center";
-      ctx.fillStyle = "#ffd9e8"; ctx.font = "16px sans-serif";
-      ctx.fillText("Smash every jelly brick with your candy ball!", W/2, H/2 - 8);
-      ctx.fillText("Drag to move  -  catch falling candies  -  fill the STAR BAR!", W/2, H/2 + 16);
-      drawMascot(W/2, H/2 + 88, 1, t);
+      ctx.fillStyle = "#ffd9e8"; ctx.font = (IS_PORTRAIT ? "14" : "16") + "px sans-serif";
+      ctx.fillText("Smash every jelly brick with your candy ball!", W/2, sy + (IS_PORTRAIT ? 84 : 96));
+      ctx.fillText("Drag to move  -  catch falling candies  -  fill the STAR BAR!", W/2, sy + (IS_PORTRAIT ? 108 : 120));
+      drawMascot(W/2, IS_PORTRAIT ? H*0.62 : H*0.66, 1, t);
       if (totalStars > 0) {
-        drawStarIcon(W/2 - 34, H - 66, 9, true, false);
+        drawStarIcon(W/2 - 34, H - 70, 9, true, false);
         ctx.fillStyle = "#ffd166"; ctx.font = "bold 14px sans-serif";
-        ctx.fillText("TOTAL STARS " + totalStars, W/2 + 18, H - 61);
+        ctx.fillText("TOTAL STARS " + totalStars, W/2 + 18, H - 65);
       }
       ctx.fillStyle = "rgba(255,240,138," + (0.6 + 0.4*Math.sin(t*4)) + ")";
       ctx.font = "bold 24px sans-serif";
-      ctx.fillText("TAP TO START", W/2, H - 30);
+      ctx.fillText("TAP TO START", W/2, H - 34);
     } else {
-      drawTitle("GAME OVER", W/2, H/2 - 60, 52, t);
+      var oy3 = H * 0.36;
+      drawTitle("GAME OVER", W/2, oy3, 52, t);
       ctx.textAlign = "center";
       ctx.fillStyle = "#fff"; ctx.font = "bold 24px sans-serif";
-      ctx.fillText("SCORE " + score, W/2, H/2 - 10);
+      ctx.fillText("SCORE " + score, W/2, oy3 + 50);
       ctx.font = "16px sans-serif"; ctx.fillStyle = "#ffd9e8";
-      ctx.fillText("BEST " + best, W/2, H/2 + 16);
+      ctx.fillText("BEST " + best, W/2, oy3 + 76);
       if (newBestFlag) {
         ctx.fillStyle = "rgba(255,209,102," + (0.7 + 0.3*Math.sin(t*6)) + ")";
         ctx.font = "bold 20px sans-serif";
-        ctx.fillText("NEW BEST!", W/2, H/2 + 46);
+        ctx.fillText("NEW BEST!", W/2, oy3 + 106);
       }
       ctx.fillStyle = "rgba(255,240,138," + (0.6 + 0.4*Math.sin(t*4)) + ")";
       ctx.font = "bold 22px sans-serif";
@@ -814,15 +847,16 @@ function draw() {
 
   if (state === STATE.CLEAR) {
     ctx.fillStyle = "rgba(36,29,78,0.5)"; ctx.fillRect(-10, -10, W+20, H+20);
-    drawTitle("LEVEL " + level + " CLEAR!", W/2, H/2 - 66, 44, t);
+    var cy2 = H * 0.34;
+    drawTitle("LEVEL " + level + " CLEAR!", W/2, cy2, 44, t);
     if (!window.__clearT) window.__clearT = t;
-    drawStarsRating(W/2, H/2 - 6, lastClearStars, Math.min(1, t - window.__clearT));
+    drawStarsRating(W/2, cy2 + 60, lastClearStars, Math.min(1, t - window.__clearT));
     ctx.textAlign = "center";
     ctx.fillStyle = "#fff"; ctx.font = "18px sans-serif";
-    ctx.fillText("Bonus +" + (50*level) + "  -  Score " + score, W/2, H/2 + 40);
+    ctx.fillText("Bonus +" + (50*level) + "  -  Score " + score, W/2, cy2 + 106);
     ctx.fillStyle = "rgba(255,240,138," + (0.6 + 0.4*Math.sin(t*4)) + ")";
     ctx.font = "bold 20px sans-serif";
-    ctx.fillText("TAP FOR LEVEL " + (level+1), W/2, H/2 + 78);
+    ctx.fillText("TAP FOR LEVEL " + (level+1), W/2, cy2 + 144);
     particles.forEach(function (p) {
       ctx.globalAlpha = 1 - p.t / p.life;
       ctx.fillStyle = p.color;
@@ -918,7 +952,7 @@ function draw() {
   if (state === STATE.PLAY && balls.some(function(b){ return b.stuck; })) {
     ctx.fillStyle = "rgba(255,240,138," + (0.55 + 0.4*Math.sin(t*4)) + ")";
     ctx.textAlign = "center"; ctx.font = "bold 15px sans-serif";
-    ctx.fillText("TAP TO LAUNCH", W/2, H - 70);
+    ctx.fillText("TAP TO LAUNCH", W/2, paddle.y - 56);
   }
 
   if (fxFlash > 0) { ctx.globalAlpha = fxFlash; ctx.fillStyle = fxFlashColor; ctx.fillRect(-10,-10,W+20,H+20); ctx.globalAlpha = 1; }
