@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Jelly Escape - Prototype</title>
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #1a0b2e; font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
+    touch-action: none; display: flex; justify-content: center; align-items: center;
+  }
+  #game-wrap {
+    position: relative; width: 100%; height: 100%;
+    
+    background: #24113a; overflow: hidden;
+    box-shadow: 0 0 40px rgba(0,0,0,0.8);
+  }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .hud {
+    position: absolute; top: 10px; left: 10px; right: 10px;
+    display: flex; justify-content: space-between; align-items: center;
+    pointer-events: none; z-index: 5;
+  }
+  .pill {
+    background: rgba(25, 10, 42, 0.82); border: 2px solid #ffb74d;
+    color: #fff8e7; padding: 6px 12px; border-radius: 999px;
+    font-weight: 800; font-size: 14px; letter-spacing: 0.4px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; gap: 6px;
+  }
+  .btn-group { display: flex; gap: 6px; pointer-events: auto; }
+  .icon-btn {
+    background: #3d1e5d; border: 2px solid #ffb74d; color: #fff;
+    min-width: 44px; height: 44px; padding: 0 10px; border-radius: 12px; font-weight: 800;
+    font-size: 14px; cursor: pointer; display: flex; justify-content: center; align-items: center;
+    box-shadow: 0 3px 0 #1b0a2a; 
+  }
+  .icon-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #1b0a2a; }
+  #banner {
+    position: absolute; top: 62px; left: 50%; transform: translateX(-50%);
+    background: rgba(45, 20, 75, 0.9); border: 2px solid #ffca28;
+    color: #fff; padding: 6px 16px; border-radius: 16px;
+    font-weight: 800; font-size: 14px; text-align: center;
+    width: calc(100% - 20px); max-width: 520px; white-space: normal; pointer-events: none; z-index: 5;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4); transition: transform 0.2s, background 0.2s;
+  }
+  #banner.catch-alert {
+    background: #ff4081; border-color: #fff; font-size: 16px;
+    transform: translateX(-50%) scale(1);
+    animation: pulse 0.45s infinite alternate;
+  }
+  @keyframes pulse { from { transform: translateX(-50%) scale(1); } to { transform: translateX(-50%) scale(1.02); } }
+  .modal {
+    position: absolute; inset: 0; background: rgba(18, 6, 32, 0.86);
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    padding: 24px; z-index: 20; text-align: center; color: #fff;
+  }
+  .modal.hidden { display: none; }
+  .card {
+    background: linear-gradient(180deg, #3c1b5c 0%, #27103d 100%);
+    border: 3px solid #ffb74d; border-radius: 24px; padding: 22px 20px;
+    width: 100%; max-width: 340px; max-height: calc(100dvh - 24px); overflow-y: auto; box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+  }
+  .card h1 { font-size: 28px; color: #ffca28; margin-bottom: 8px; text-shadow: 0 2px 0 #000; }
+  .card p { font-size: 14px; line-height: 1.45; color: #f3e5f5; margin-bottom: 12px; }
+  .rules {
+    text-align: left; background: rgba(0,0,0,0.28); border-radius: 14px;
+    padding: 12px 14px; margin-bottom: 16px; font-size: 13px; line-height: 1.5; color: #ffe0b2;
+  }
+  .rules div { margin-bottom: 6px; }
+  .rules div:last-child { margin-bottom: 0; }
+  .cta-btn {
+    background: linear-gradient(180deg, #ffca28 0%, #ff9800 100%);
+    border: none; border-bottom: 4px solid #c66900; color: #2b1100;
+    font-size: 18px; font-weight: 900; padding: 12px 28px; border-radius: 999px;
+    cursor: pointer; width: 100%; box-shadow: 0 6px 15px rgba(255,152,0,0.4);
+  }
+  .cta-btn:active { transform: translateY(2px); border-bottom-width: 2px; }
+</style>
+</head>
+<body>
+<div id="game-wrap">
+  <div class="hud">
+    <div class="pill"><span id="lvl-txt">LVL 1/3</span></div>
+    <div class="pill"><span>ORBS:</span><span id="shots-txt">5</span></div>
+    <div class="btn-group">
+      <button class="icon-btn" id="retry-btn" title="Retry Level">↻</button>
+      <button class="icon-btn" id="mute-btn" title="Mute Audio">Sound</button>
+    </div>
+  </div>
+  <div id="banner">Drag upper cavern to AIM & RELEASE</div>
+
+  <canvas id="cv"></canvas>
+
+  <div id="overlay" class="modal">
+    <div class="card">
+      <h1 id="m-title">JELLY ESCAPE</h1>
+      <p id="m-desc">Rescue the trapped Royal Jelly from the Amber Cavern!</p>
+      <div class="rules" id="m-rules">
+        <div><b>AIM:</b> Drag above the basket to aim. Release to shoot.</div>
+        <div><b>COLLAPSE:</b> Break the gold supports. Loose gummy clusters fall!</div>
+        <div><b>CATCH:</b> When jelly falls, slide anywhere to catch it in the basket.</div>
+      </div>
+      <button class="cta-btn" id="m-btn">PLAY NOW</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const lvlTxt = document.getElementById('lvl-txt');
+  const shotsTxt = document.getElementById('shots-txt');
+  const banner = document.getElementById('banner');
+  const overlay = document.getElementById('overlay');
+  const mTitle = document.getElementById('m-title');
+  const mDesc = document.getElementById('m-desc');
+  const mRules = document.getElementById('m-rules');
+  const mBtn = document.getElementById('m-btn');
+  const retryBtn = document.getElementById('retry-btn');
+  const muteBtn = document.getElementById('mute-btn');
+
+  // Logical coordinate system: 360 x 640
+  let LW = 360, LH = 640;
+  const CEIL_Y = 128;
+  let BASKET_Y = 576;
+  const BASKET_W = 86, BASKET_H = 26;
+
+  // Audio System (Web Audio API procedural synthesizer)
+  let audioCtx = null;
+  let muted = false;
+  try { muted = localStorage.getItem('je_mute') === '1'; } catch(e){}
+  muteBtn.textContent = muted ? 'Muted' : 'Sound';
+
+  function initAudio() {
+    if (muted) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+    } catch(e){}
+  }
+
+  function sfx(type) {
+    if (muted || !audioCtx) return;
+    try {
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.connect(g); g.connect(audioCtx.destination);
+      if (type === 'launch') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(190, now);
+        osc.frequency.exponentialRampToValueAtTime(520, now + 0.14);
+        g.gain.setValueAtTime(0.18, now);
+        g.gain.linearRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now); osc.stop(now + 0.15);
+      } else if (type === 'pop') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(320 + Math.random()*180, now);
+        osc.frequency.exponentialRampToValueAtTime(680, now + 0.11);
+        g.gain.setValueAtTime(0.22, now);
+        g.gain.linearRampToValueAtTime(0.01, now + 0.12);
+        osc.start(now); osc.stop(now + 0.12);
+      } else if (type === 'free') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.32);
+        g.gain.setValueAtTime(0.25, now);
+        g.gain.linearRampToValueAtTime(0.01, now + 0.35);
+        osc.start(now); osc.stop(now + 0.35);
+      } else if (type === 'win') {
+        [523, 659, 784, 1046].forEach((freq, idx) => {
+          const o = audioCtx.createOscillator();
+          const gn = audioCtx.createGain();
+          o.type = 'triangle';
+          o.connect(gn); gn.connect(audioCtx.destination);
+          o.frequency.setValueAtTime(freq, now + idx*0.07);
+          gn.gain.setValueAtTime(0.2, now + idx*0.07);
+          gn.gain.linearRampToValueAtTime(0.005, now + idx*0.07 + 0.22);
+          o.start(now + idx*0.07); o.stop(now + idx*0.07 + 0.23);
+        });
+      } else if (type === 'miss') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(240, now);
+        osc.frequency.linearRampToValueAtTime(110, now + 0.3);
+        g.gain.setValueAtTime(0.14, now);
+        g.gain.linearRampToValueAtTime(0.01, now + 0.32);
+        osc.start(now); osc.stop(now + 0.32);
+      }
+    } catch(e){}
+  }
+
+  // Level Definitions
+  // R = ceiling rock anchor (1hp), G = pink gummy (1hp), A = tough amber (2hp), T = Royal Jelly Target
+  const LEVELS = [
+    {
+      name: "Amber Archway",
+      hint: "Break the gold supports to free the jelly!",
+      rows: [
+        "..R...R..",
+        "..G.T.G..",
+        "...GGG...",
+        "....G...."
+      ]
+    },
+    {
+      name: "Twin Pillars",
+      hint: "Break both gold supports. Amber takes 2 hits.",
+      rows: [
+        ".R.....R.",
+        ".G..T..G.",
+        ".G.GGG.G.",
+        "..A...A.."
+      ]
+    },
+    {
+      name: "Royal Fortress",
+      hint: "Bounce shots off walls to break the gold supports.",
+      rows: [
+        "..R.R.R..",
+        "..A.T.A..",
+        "..GGGGG..",
+        "...A.A...",
+        "....G...."
+      ]
+    }
+  ];
+
+  // Game State
+  let state = {
+    levelIdx: 0,
+    phase: 'start', // 'start', 'aim', 'flight', 'won', 'lost'
+    shots: 5,
+    basketX: LW / 2,
+    aiming: false,
+    aimAngle: -Math.PI / 2,
+    pointerMode: null, // 'aim' or 'basket'
+    slowMoTimer: 0,
+    catchBannerTimer: 0,
+    nodes: [],
+    falling: [],
+    particles: [],
+    orb: null,
+    target: {
+      x: LW / 2, y: 160, vx: 0, vy: 0, r: 20,
+      freed: false, caught: false, missed: false,
+      squash: 1, squashV: 0, row: 1, col: 4
+    }
+  };
+
+  function gridToPos(r, c) {
+    const colW = 34, rowH = 32;
+    const x0 = (LW - 8 * colW) / 2;
+    return {
+      x: x0 + c * colW + (r % 2 === 1 ? 6 : -6),
+      y: CEIL_Y + 22 + r * rowH
+    };
+  }
+
+  function loadLevel(idx) {
+    state.levelIdx = ((idx % LEVELS.length) + LEVELS.length) % LEVELS.length;
+    const lvl = LEVELS[state.levelIdx];
+    state.shots = 5;
+    state.orb = null;
+    state.falling = [];
+    state.particles = [];
+    state.nodes = [];
+    state.slowMoTimer = 0;
+    state.catchBannerTimer = 0;
+    state.aiming = false;
+    state.pointerMode = null;
+    state.aimAngle = -Math.PI / 2;
+    state.basketX = LW / 2;
+
+    let idCounter = 1;
+    lvl.rows.forEach((rowStr, r) => {
+      for (let c = 0; c < rowStr.length; c++) {
+        const ch = rowStr[c];
+        if (ch === '.') continue;
+        const pos = gridToPos(r, c);
+        if (ch === 'T') {
+          state.target = {
+            x: pos.x, y: pos.y, vx: 0, vy: 0, r: 21,
+            freed: false, caught: false, missed: false,
+            squash: 1, squashV: 0, row: r, col: c
+          };
+        } else {
+          const isAnchor = ch === 'R';
+          const isAmber = ch === 'A';
+          state.nodes.push({
+            id: idCounter++,
+            row: r, col: c,
+            x: pos.x, y: pos.y,
+            r: 16.5,
+            type: ch,
+            anchor: isAnchor || r === 0,
+            hp: isAmber ? 2 : 1,
+            maxHp: isAmber ? 2 : 1,
+            color: isAnchor ? '#ffca28' : (isAmber ? '#ff9100' : '#ff4081'),
+            wobble: 0
+          });
+        }
+      }
+    });
+
+    updateHUD();
+    banner.classList.remove('catch-alert');
+    banner.textContent = lvl.hint;
+  }
+
+  function updateHUD() {
+    lvlTxt.textContent = `LVL ${state.levelIdx + 1}/${LEVELS.length}`;
+    shotsTxt.textContent = `${state.shots}`;
+  }
+
+  // Connectivity Graph (BFS from ceiling anchors)
+  function evaluateConnectivity(hitX) {
+    const DIST_THRESH = 49;
+    const visited = new Set();
+    const queue = [];
+
+    for (const n of state.nodes) {
+      if (n.anchor) {
+        visited.add(n.id);
+        queue.push(n);
+      }
+    }
+
+    while (queue.length > 0) {
+      const curr = queue.shift();
+      for (const other of state.nodes) {
+        if (!visited.has(other.id)) {
+          const dx = curr.x - other.x;
+          const dy = curr.y - other.y;
+          if (Math.hypot(dx, dy) <= DIST_THRESH) {
+            visited.add(other.id);
+            queue.push(other);
+          }
+        }
+      }
+    }
+
+    const kept = [];
+    for (const n of state.nodes) {
+      if (visited.has(n.id)) {
+        kept.push(n);
+      } else {
+        state.falling.push({
+          x: n.x, y: n.y,
+          vx: (Math.random() - 0.5) * 45,
+          vy: -25 - Math.random() * 25,
+          r: n.r, color: n.color,
+          rot: 0, vrot: (Math.random() - 0.5) * 5
+        });
+      }
+    }
+    state.nodes = kept;
+
+    // Check if Royal Jelly Target is still supported by at least 1 connected node
+    if (!state.target.freed) {
+      let supportCount = 0;
+      for (const n of state.nodes) {
+        if (Math.hypot(n.x - state.target.x, n.y - state.target.y) <= DIST_THRESH + 3) {
+          supportCount++;
+        }
+      }
+      if (supportCount === 0) {
+        freeTarget(hitX);
+      }
+    }
+  }
+
+  function freeTarget(impulseX = LW / 2) {
+    if (state.target.freed) return;
+    state.target.freed = true;
+    // Gentle, fair horizontal drift capped for easy phone catching
+    const dir = (state.target.x - impulseX) >= 0 ? 1 : -1;
+    state.target.vx = dir * 24;
+    state.target.vy = -38; // small hop before gravity drop (>1.8s catch window)
+    state.target.squash = 1.32;
+    state.slowMoTimer = 0.55;
+    state.catchBannerTimer = 3.0;
+    banner.textContent = "ROYAL JELLY FREED! SLIDE TO CATCH!";
+    banner.classList.add('catch-alert');
+    sfx('free');
+    spawnParticles(state.target.x, state.target.y, '#69f0ae', 14);
+  }
+
+  function spawnParticles(x, y, color, count = 8) {
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 35 + Math.random() * 110;
+      state.particles.push({
+        x, y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp,
+        r: 3 + Math.random() * 4,
+        color,
+        life: 0.35 + Math.random() * 0.25
+      });
+    }
+  }
+
+  function launchOrb(angle) {
+    if (state.shots <= 0 || state.orb || state.target.freed) return;
+    const clamped = Math.max(-Math.PI + 0.28, Math.min(-0.28, angle));
+    const speed = 470;
+    state.shots--;
+    state.orb = {
+      x: state.basketX,
+      y: BASKET_Y - 18,
+      vx: Math.cos(clamped) * speed,
+      vy: Math.sin(clamped) * speed,
+      r: 11,
+      hitsLeft: 3,
+      dead: false
+    };
+    state.phase = 'flight';
+    updateHUD();
+    sfx('launch');
+  }
+
+  function stepSub(dt) {
+    if (state.phase === 'start' || state.phase === 'won' || state.phase === 'lost') return;
+
+    // Slow motion scale when Royal Jelly just broke free
+    let timeScale = 1.0;
+    if (state.slowMoTimer > 0) {
+      state.slowMoTimer = Math.max(0, state.slowMoTimer - dt);
+      timeScale = 0.38;
+    }
+    const sdt = dt * timeScale;
+
+    // Node wobble decay
+    for (const n of state.nodes) {
+      if (n.wobble > 0) n.wobble = Math.max(0, n.wobble - dt * 3.5);
+    }
+
+    // Update Wrecking Orb
+    if (state.orb) {
+      const o = state.orb;
+      if (o.dead) {
+        o.vy += 680 * sdt;
+      }
+      o.x += o.vx * sdt;
+      o.y += o.vy * sdt;
+
+      // Wall collisions
+      if (o.x - o.r < 14) { o.x = 14 + o.r; o.vx = Math.abs(o.vx); }
+      if (o.x + o.r > LW - 14) { o.x = LW - 14 - o.r; o.vx = -Math.abs(o.vx); }
+      if (o.y - o.r < CEIL_Y) {
+        o.y = CEIL_Y + o.r;
+        o.vy = Math.abs(o.vy) * 0.85;
+        if (!o.dead) {
+          o.hitsLeft--;
+          if (o.hitsLeft <= 0) o.dead = true;
+        }
+      }
+
+      // Check collision with Gummy Nodes
+      if (!o.dead) {
+        for (let i = state.nodes.length - 1; i >= 0; i--) {
+          const n = state.nodes[i];
+          const dx = o.x - n.x;
+          const dy = o.y - n.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < o.r + n.r) {
+            const nx = dx / (dist || 1);
+            const ny = dy / (dist || 1);
+            o.x = n.x + nx * (o.r + n.r + 0.5);
+            o.y = n.y + ny * (o.r + n.r + 0.5);
+            const dot = o.vx * nx + o.vy * ny;
+            if (dot < 0) {
+              o.vx -= 1.9 * dot * nx;
+              o.vy -= 1.9 * dot * ny;
+            }
+            n.hp--;
+            n.wobble = 1.0;
+            o.hitsLeft--;
+            sfx('pop');
+            spawnParticles(n.x, n.y, n.color, 9);
+
+            if (n.hp <= 0) {
+              state.nodes.splice(i, 1);
+              evaluateConnectivity(o.x);
+            }
+            if (o.hitsLeft <= 0) {
+              o.dead = true;
+              o.vx *= 0.45;
+              o.vy = Math.max(40, o.vy * 0.4);
+            }
+            break;
+          }
+        }
+      }
+
+      // Direct nudge on Target if hit directly
+      if (!o.dead && !state.target.freed) {
+        const t = state.target;
+        const dx = o.x - t.x, dy = o.y - t.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < o.r + t.r) {
+          const nx = dx / (dist || 1), ny = dy / (dist || 1);
+          o.x = t.x + nx * (o.r + t.r + 1);
+          o.y = t.y + ny * (o.r + t.r + 1);
+          const dot = o.vx * nx + o.vy * ny;
+          if (dot < 0) { o.vx -= 1.8 * dot * nx; o.vy -= 1.8 * dot * ny; }
+          t.squash = 1.28;
+          o.hitsLeft--;
+          sfx('pop');
+          if (o.hitsLeft <= 0) o.dead = true;
+        }
+      }
+
+      // Orb exits bottom or hits basket while falling
+      if (o.y > LH + 30 || (o.vy > 0 && o.y > BASKET_Y && Math.abs(o.x - state.basketX) < BASKET_W * 0.45)) {
+        state.orb = null;
+      }
+    }
+
+    // Update Falling Disconnected Blobs
+    for (let i = state.falling.length - 1; i >= 0; i--) {
+      const f = state.falling[i];
+      f.vy += 420 * sdt;
+      f.x += f.vx * sdt;
+      f.y += f.vy * sdt;
+      f.rot += f.vrot * sdt;
+      if (f.y > LH + 40) state.falling.splice(i, 1);
+    }
+
+    // Update Royal Jelly Target
+    const t = state.target;
+    t.squash += (1 - t.squash) * Math.min(1, dt * 10);
+
+    if (t.freed && !t.caught && !t.missed) {
+      const prevY = t.y;
+      // Gentle gravity so player has ~1.8-2.2s to position basket
+      const g = Math.max(12, Math.min(185, (BASKET_Y - 6 - t.y) * 0.60));
+      t.vy = Math.min(Math.max(35,(BASKET_Y - 130)*0.55), t.vy + g * sdt);
+      t.x += t.vx * sdt;
+      t.y += t.vy * sdt;
+
+      if (t.x - t.r < 20) { t.x = 20 + t.r; t.vx = Math.abs(t.vx) * 0.8; }
+      if (t.x + t.r > LW - 20) { t.x = LW - 20 - t.r; t.vx = -Math.abs(t.vx) * 0.8; }
+
+      // Check Catch when crossing basket rim height
+      const catchLine = BASKET_Y - 6;
+      if (t.vy > 0 && prevY <= catchLine && t.y >= catchLine) {
+        if (Math.abs(t.x - state.basketX) <= BASKET_W * 0.54) {
+          t.caught = true;
+          t.y = BASKET_Y - 8;
+          t.vx = 0; t.vy = 0;
+          t.squash = 0.68;
+          state.phase = 'won';
+          sfx('win');
+          spawnParticles(t.x, t.y, '#ffeb3b', 20);
+          showEndModal(true);
+          return;
+        }
+      }
+
+      if (t.y - t.r > LH + 12) {
+        t.missed = true;
+        state.phase = 'lost';
+        sfx('miss');
+        showEndModal(false, "Royal Jelly bounced harmlessly into the soft moss below! Try catching him in the basket.");
+        return;
+      }
+    }
+
+    // Update Particles
+    for (let i = state.particles.length - 1; i >= 0; i--) {
+      const p = state.particles[i];
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.life -= dt;
+      if (p.life <= 0) state.particles.splice(i, 1);
+    }
+
+    // Check Settlement after shot
+    if (state.phase === 'flight' && !state.orb && !t.freed && state.falling.length === 0) {
+      if (state.shots <= 0) {
+        state.phase = 'lost';
+        sfx('miss');
+        showEndModal(false, "Out of Wrecking Orbs! Tip: Aim for the top ceiling anchors to drop whole clusters at once.");
+      } else {
+        state.phase = 'aim';
+        banner.classList.remove('catch-alert');
+        banner.textContent = "Drag upper cavern to AIM & RELEASE";
+      }
+    }
+  }
+
+  function advancePhysics(totalDt) {
+    const clamped = Math.min(0.1, Math.max(0, totalDt));
+    const STEP = 1 / 120;
+    let rem = clamped;
+    while (rem > 0.00001) {
+      const s = Math.min(rem, STEP);
+      stepSub(s);
+      rem -= s;
+    }
+  }
+
+  function showEndModal(won, reason = "") {
+    overlay.classList.remove('hidden');
+    mRules.style.display = 'none';
+    if (won) {
+      const isLast = state.levelIdx === LEVELS.length - 1;
+      mTitle.textContent = isLast ? "CAVERN CLEARED! " : "RESCUE SUCCESS! ";
+      mDesc.textContent = isLast
+        ? "You rescued the Royal Jelly across all 3 Amber Caverns!"
+        : `Royal Jelly is safe and happy in your basket! Ready for Cavern ${state.levelIdx + 2}?`;
+      mBtn.textContent = isLast ? "PLAY AGAIN (LVL 1)" : "NEXT CAVERN ➔";
+    } else {
+      mTitle.textContent = "SO CLOSE!";
+      mDesc.textContent = reason;
+      mBtn.textContent = "TRY AGAIN ↻";
+    }
+  }
+
+  // Rendering
+  function draw() {
+    ctx.clearRect(0, 0, LW, LH);
+
+    // 1. Background Cavern & Warm Amber Glow
+    const bgGrad = ctx.createRadialGradient(LW/2, 220, 20, LW/2, 300, 380);
+    bgGrad.addColorStop(0, '#5a287d');
+    bgGrad.addColorStop(0.55, '#331452');
+    bgGrad.addColorStop(1, '#1c0930');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, LW, LH);
+
+    // Layered rock shelves, sugar crystals and drifting amber motes.
+    for(let side=0;side<2;side++){
+      ctx.save(); if(side){ctx.translate(LW,0);ctx.scale(-1,1);}
+      for(let i=0;i<5;i++){
+        let y=145+i*(LH-210)/5;
+        ctx.fillStyle=i%2?'#37194d':'#44215f';ctx.beginPath();ctx.moveTo(0,y-40);ctx.lineTo(24,y-28);ctx.lineTo(40,y+12);ctx.lineTo(18,y+45);ctx.lineTo(0,y+60);ctx.fill();
+        ctx.fillStyle=i%2?'#a45cda':'#58d9c6';ctx.globalAlpha=.5;ctx.beginPath();ctx.moveTo(15,y);ctx.lineTo(22,y-27);ctx.lineTo(30,y-4);ctx.lineTo(25,y+14);ctx.closePath();ctx.fill();ctx.globalAlpha=1;
+      }ctx.restore();
+    }
+    for(let i=0;i<24;i++){
+      let x=25+(i*71)%(LW-50),y=150+(i*53)%(LH-180);
+      ctx.globalAlpha=.12+.12*Math.sin(performance.now()/1100+i);ctx.fillStyle='#ffdf84';ctx.beginPath();ctx.arc(x,y,1.3+(i%3),0,7);ctx.fill();
+    }ctx.globalAlpha=1;
+    let moss=ctx.createLinearGradient(0,LH-40,0,LH);moss.addColorStop(0,'#26495a');moss.addColorStop(1,'#173448');ctx.fillStyle=moss;
+    ctx.beginPath();ctx.moveTo(0,LH);ctx.lineTo(0,LH-24);for(let x=0;x<=LW;x+=12)ctx.lineTo(x,LH-20-5*Math.sin(x*.12));ctx.lineTo(LW,LH);ctx.fill();
+
+    // 2. Cavern Side Rock Walls & Ceiling Arch
+    ctx.fillStyle = '#240c3b';
+    ctx.fillRect(0, 0, 14, LH);
+    ctx.fillRect(LW - 14, 0, 14, LH);
+
+    ctx.fillStyle = '#38155a';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(LW, 0);
+    ctx.lineTo(LW, CEIL_Y + 6);
+    for (let x = LW; x >= 0; x -= 30) {
+      const jag = (x % 60 === 0) ? 10 : -2;
+      ctx.lineTo(x, CEIL_Y + jag);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#ffb74d';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 3. Draw Sticky Gummy Web Connections
+    const DIST_THRESH = 49;
+    ctx.lineWidth = 7;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < state.nodes.length; i++) {
+      const a = state.nodes[i];
+      if (a.anchor) {
+        ctx.strokeStyle = 'rgba(255, 202, 40, 0.55)';
+        ctx.beginPath();
+        ctx.moveTo(a.x, CEIL_Y);
+        ctx.lineTo(a.x, a.y);
+        ctx.stroke();
+      }
+      for (let j = i + 1; j < state.nodes.length; j++) {
+        const b = state.nodes[j];
+        if (Math.hypot(a.x - b.x, a.y - b.y) <= DIST_THRESH) {
+          ctx.strokeStyle = 'rgba(255, 128, 171, 0.42)';
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+      if (!state.target.freed && Math.hypot(a.x - state.target.x, a.y - state.target.y) <= DIST_THRESH + 3) {
+        ctx.strokeStyle = 'rgba(105, 240, 174, 0.55)';
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(state.target.x, state.target.y);
+        ctx.stroke();
+      }
+    }
+
+    // 4. Aiming Guide Line
+    if (state.phase === 'aim' && !state.target.freed && state.shots > 0) {
+      ctx.save();
+      ctx.strokeStyle = state.aiming ? '#ffeb3b' : 'rgba(255, 235, 59, 0.45)';
+      ctx.lineWidth = state.aiming ? 3.5 : 2;
+      ctx.setLineDash([7, 7]);
+      ctx.beginPath();
+      const sx = state.basketX, sy = BASKET_Y - 18;
+      ctx.moveTo(sx, sy);
+      let rx = sx, ry = sy;
+      let vx = Math.cos(state.aimAngle), vy = Math.sin(state.aimAngle);
+      for (let step = 0; step < 260; step += 6) {
+        rx += vx * 6;
+        ry += vy * 6;
+        if (rx < 24 || rx > LW - 24) vx = -vx;
+        if (ry < CEIL_Y + 10) break;
+        ctx.lineTo(rx, ry);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 5. Draw Connected Gummy Nodes
+    for (const n of state.nodes) {
+      const wob = Math.sin(performance.now() * 0.03) * n.wobble * 3.5;
+      ctx.save();
+      ctx.translate(n.x + wob, n.y);
+      ctx.fillStyle = n.color;
+      ctx.beginPath();
+      ctx.arc(0, 0, n.r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Glossy highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.38)';
+      ctx.beginPath();
+      ctx.arc(-5, -5, n.r * 0.36, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Anchor / Tough Armor ring
+      if (n.anchor) {
+        ctx.strokeStyle = '#fff8e1';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      } else if (n.maxHp > 1 && n.hp === 2) {
+        ctx.strokeStyle = '#ffe082';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // 6. Draw Falling Disconnected Blobs
+    for (const f of state.falling) {
+      ctx.save();
+      ctx.translate(f.x, f.y);
+      ctx.rotate(f.rot);
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = f.color;
+      ctx.beginPath();
+      ctx.arc(0, 0, f.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 7. Draw Royal Jelly Target (Expressive Stretchy Character with Crown)
+    const t = state.target;
+    if (!t.missed) {
+      ctx.save();
+      ctx.translate(t.x, t.y);
+      const sx = 1 / Math.sqrt(t.squash);
+      const sy = t.squash;
+      ctx.scale(sx, sy);
+
+      // Outer glow
+      ctx.shadowColor = '#00e676';
+      ctx.shadowBlur = t.freed ? 18 : 10;
+
+      // Jelly body
+      ctx.fillStyle = '#00e676';
+      ctx.beginPath();
+      ctx.arc(0, 0, t.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Gloss
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.beginPath();
+      ctx.ellipse(-6, -7, 6, 4, -0.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Golden Crown
+      ctx.fillStyle = '#ffd600';
+      ctx.strokeStyle = '#ff6f00';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-11, -t.r + 3);
+      ctx.lineTo(-14, -t.r - 9);
+      ctx.lineTo(-5, -t.r - 3);
+      ctx.lineTo(0, -t.r - 11);
+      ctx.lineTo(5, -t.r - 3);
+      ctx.lineTo(14, -t.r - 9);
+      ctx.lineTo(11, -t.r + 3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Expressive Eyes & Mouth
+      ctx.fillStyle = '#1b092b';
+      ctx.beginPath();
+      ctx.arc(-6.5, -1, 3.2, 0, Math.PI * 2);
+      ctx.arc(6.5, -1, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(-7.5, -2, 1.2, 0, Math.PI * 2);
+      ctx.arc(5.5, -2, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#1b092b';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      if (t.caught) {
+        // Big happy smile
+        ctx.arc(0, 3, 6, 0, Math.PI);
+      } else if (t.freed) {
+        // Excited 'O' mouth while falling
+        ctx.arc(0, 5, 4, 0, Math.PI * 2);
+      } else {
+        // Hopeful wave
+        ctx.arc(0, 4, 4, 0.2, Math.PI - 0.2);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 8. Draw Wrecking Orb
+    const orbToDraw = state.orb || (state.phase === 'aim' && !t.freed && state.shots > 0
+      ? { x: state.basketX, y: BASKET_Y - 18, r: 11, hitsLeft: 3, dead: false }
+      : null);
+
+    if (orbToDraw) {
+      ctx.save();
+      ctx.translate(orbToDraw.x, orbToDraw.y);
+      ctx.fillStyle = orbToDraw.dead ? '#78909c' : '#00e5ff';
+      ctx.beginPath();
+      ctx.arc(0, 0, orbToDraw.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Remaining hit pips on orb
+      ctx.fillStyle = '#1a0b2e';
+      ctx.font = '900 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(orbToDraw.hitsLeft, 0, 1);
+      ctx.restore();
+    }
+
+    // 9. Draw Catcher Basket at bottom
+    ctx.save();
+    ctx.translate(state.basketX, BASKET_Y);
+
+    // Basket glow when target is falling
+    if (t.freed && !t.caught) {
+      ctx.shadowColor = '#ffeb3b';
+      ctx.shadowBlur = 16;
+    }
+
+    // Woven Basket Rim & Body
+    ctx.fillStyle = '#ff9800';
+    ctx.strokeStyle = '#ffe082';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.roundRect(-BASKET_W / 2, -6, BASKET_W, 10, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#e65100';
+    ctx.beginPath();
+    ctx.moveTo(-BASKET_W / 2 + 5, 4);
+    ctx.lineTo(BASKET_W / 2 - 5, 4);
+    ctx.lineTo(BASKET_W / 2 - 14, BASKET_H);
+    ctx.lineTo(-BASKET_W / 2 + 14, BASKET_H);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Soft cushion inside basket
+    ctx.fillStyle = '#ff4081';
+    ctx.beginPath();
+    ctx.ellipse(0, -5, BASKET_W * 0.38, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // 10. Draw Particles
+    for (const p of state.particles) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.life * 2);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Bottom Finger Track Hint
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.font = '700 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(t.freed ? '◄ SLIDE ANYWHERE TO CATCH ROYAL JELLY ►' : '◄ SLIDE BOTTOM TO MOVE BASKET ►', LW / 2, LH - 14);
+  }
+
+  // Input Handling (One-finger unified pointer events)
+  function clientToLogical(e) {
+    const rect = cv.getBoundingClientRect();
+    return {
+      x: ((e.clientX - rect.left) / rect.width) * LW,
+      y: ((e.clientY - rect.top) / rect.height) * LH
+    };
+  }
+
+  function updateAimFromPoint(pt) {
+    const dx = pt.x - state.basketX;
+    const dy = Math.min(-25, pt.y - (BASKET_Y - 18));
+    state.aimAngle = Math.max(-Math.PI + 0.28, Math.min(-0.28, Math.atan2(dy, dx)));
+  }
+
+  cv.addEventListener('pointerdown', (e) => {
+    initAudio();
+    if (state.phase === 'start' || state.phase === 'won' || state.phase === 'lost') return;
+    try { cv.setPointerCapture(e.pointerId); } catch(err){}
+    const pt = clientToLogical(e);
+
+    // If Royal Jelly is freed OR orb is in flight OR user touches bottom zone -> direct basket movement
+    if (state.target.freed || state.phase === 'flight' || pt.y > BASKET_Y - 85) {
+      state.pointerMode = 'basket';
+      state.basketX = Math.max(BASKET_W/2 + 16, Math.min(LW - BASKET_W/2 - 16, pt.x));
+    } else if (state.phase === 'aim' && state.shots > 0) {
+      state.pointerMode = 'aim';
+      state.aiming = true;
+      updateAimFromPoint(pt);
+    }
+  });
+
+  cv.addEventListener('pointermove', (e) => {
+    if (!state.pointerMode) return;
+    const pt = clientToLogical(e);
+    if (state.target.freed || state.pointerMode === 'basket') {
+      state.basketX = Math.max(BASKET_W/2 + 16, Math.min(LW - BASKET_W/2 - 16, pt.x));
+    } else if (state.pointerMode === 'aim') {
+      updateAimFromPoint(pt);
+    }
+  });
+
+  function endPointer(e) {
+    if (!state.pointerMode) return;
+    if (state.pointerMode === 'aim' && state.aiming && !state.target.freed && state.phase === 'aim') {
+      const pt = clientToLogical(e);
+      updateAimFromPoint(pt);
+      state.aiming = false;
+      launchOrb(state.aimAngle);
+    }
+    state.pointerMode = null;
+    state.aiming = false;
+  }
+
+  cv.addEventListener('pointerup', endPointer);
+  cv.addEventListener('pointercancel', () => { state.pointerMode = null; state.aiming = false; });
+
+  // UI Buttons
+  mBtn.addEventListener('click', () => {
+    initAudio();
+    overlay.classList.add('hidden');
+    if (state.phase === 'won') {
+      const next = (state.levelIdx + 1) % LEVELS.length;
+      loadLevel(next);
+    } else if (state.phase === 'lost') {
+      loadLevel(state.levelIdx);
+    } else {
+      loadLevel(0);
+    }
+    state.phase = 'aim';
+  });
+
+  retryBtn.addEventListener('click', () => {
+    initAudio();
+    overlay.classList.add('hidden');
+    loadLevel(state.levelIdx);
+    state.phase = 'aim';
+  });
+
+  muteBtn.addEventListener('click', () => {
+    muted = !muted;
+    muteBtn.textContent = muted ? 'Muted' : 'Sound';
+    try { localStorage.setItem('je_mute', muted ? '1' : '0'); } catch(e){}
+  });
+
+  // Responsive High-DPI Canvas Resize
+  function resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const rect = cv.getBoundingClientRect(); LW = rect.width > rect.height ? 740 : 360; LH = LW * rect.height / rect.width; BASKET_Y = LH - 64;
+    cv.width = LW * dpr;
+    cv.height = LH * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+  loadLevel(0);
+
+  // Main Loop
+  let lastTime = performance.now();
+  function loop(now) {
+    const dt = (now - lastTime) / 1000;
+    lastTime = now;
+    if (!window.__qaPaused) advancePhysics(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // Controlled Physics & Gameplay Test Hooks
+  window.__gameTest = {
+    details: () => JSON.parse(JSON.stringify(state)),
+    snapshot: () => ({
+      level: state.levelIdx + 1,
+      phase: state.phase,
+      shotsRemaining: state.shots,
+      connectedBlobs: state.nodes.length,
+      fallingBlobs: state.falling.length,
+      basketX: Math.round(state.basketX),
+      orbActive: !!state.orb,
+      target: {
+        x: Math.round(state.target.x),
+        y: Math.round(state.target.y),
+        freed: state.target.freed,
+        caught: state.target.caught,
+        missed: state.target.missed
+      }
+    }),
+    reset: (levelIndex = 0) => {
+      overlay.classList.add('hidden');
+      loadLevel(levelIndex);
+      state.phase = 'aim';
+      return window.__gameTest.snapshot();
+    },
+    setBasketX: (x) => {
+      state.basketX = Math.max(BASKET_W/2 + 16, Math.min(LW - BASKET_W/2 - 16, x));
+    },
+    fireAngle: (angleRad = -Math.PI / 2) => {
+      overlay.classList.add('hidden');
+      if (state.phase === 'start') state.phase = 'aim';
+      launchOrb(angleRad);
+    },
+    freeTargetNow: () => {
+      overlay.classList.add('hidden');
+      state.phase = 'flight';
+      freeTarget(state.target.x);
+    },
+    step: (seconds = 1/60) => {
+      advancePhysics(seconds);
+      draw();
+      return window.__gameTest.snapshot();
+    }
+  };
+})();
+</script>
+</body>
+</html>
