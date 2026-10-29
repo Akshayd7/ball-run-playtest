@@ -308,7 +308,7 @@ function genRow(z){
     var n=1+((Math.random()*(1+diff*2.4))|0);
     var usedX=[];
     for(var i=0;i<n;i++){
-      var x=(Math.random()-0.5)*17;
+      var x=(Math.random()-0.5)*19;
       var ok=true;for(var u=0;u<usedX.length;u++)if(Math.abs(usedX[u]-x)<2.6){ok=false;break;}
       if(!ok)continue;usedX.push(x);
       var kinds=['rock','pine','snowman','rock','pine'];
@@ -488,7 +488,7 @@ function loop(){
       if(o.kind==='rail'&&airborne&&vy<0&&dz<4.2&&dx<0.75&&py<1.6&&!grinding){
         grinding={x:o.x,until:dist+8/speed};trickT=-1;rider.rotation.set(0,Math.PI,0);rider.position.y=0;sfx('land');popMsg('🛷 Rail grind!','#8ee3ff');
       }
-      if((o.kind==='rock'||o.kind==='pine'||o.kind==='snowman')&&dz<0.95&&dx<0.95&&py<1.2&&!grinding){
+      if((o.kind==='rock'||o.kind==='pine'||o.kind==='snowman')&&dz<1.0&&dx<1.05&&py<1.2&&!grinding){
         crash();
       }
     }
@@ -509,6 +509,7 @@ function loop(){
   renderer.render(scene,camera);
 }
 loop();
+window.__fr=function(){return {px:px,py:py,dead:dead,running:running,dist:Math.floor(dist),speed:+speed.toFixed(1),objs:objs.filter(function(o){return o.z>-60&&o.z<5&&(o.kind==='rock'||o.kind==='pine'||o.kind==='snowman');}).map(function(o){return {k:o.kind,x:+o.x.toFixed(1),z:+o.z.toFixed(1)};})};};
 })();
 </script>
 </body>
