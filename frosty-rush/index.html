@@ -172,7 +172,7 @@ function snowTex(base){
   var bc=new THREE.Color(base);
   x.fillStyle='rgb('+((bc.r*255)|0)+','+((bc.g*255)|0)+','+((bc.b*255)|0)+')';x.fillRect(0,0,128,128);
   for(var i=0;i<340;i++){x.fillStyle='rgba(255,255,255,'+(0.05+Math.random()*0.12)+')';var r=Math.random()*2+0.5;x.beginPath();x.arc(Math.random()*128,Math.random()*128,r,0,7);x.fill();}
-  for(var j=0;j<26;j++){x.fillStyle='rgba(190,220,255,0.10)';x.beginPath();x.arc(Math.random()*128,Math.random()*128,Math.random()*3+1,0,7);x.fill();}
+  for(var j=0;j<26;j++){x.fillStyle='rgba(150,190,240,0.16)';x.beginPath();x.arc(Math.random()*128,Math.random()*128,Math.random()*3+1,0,7);x.fill();}
   var tx=new THREE.CanvasTexture(cv);tx.wrapS=tx.wrapT=THREE.RepeatWrapping;tx.repeat.set(10,60);return tx;
 }
 var groundMat=new THREE.MeshLambertMaterial({map:snowTex(0xfff0fa)});
@@ -223,7 +223,7 @@ function lamb(c){return new THREE.MeshLambertMaterial({color:c});}
   var scarf=new THREE.Mesh(new THREE.TorusGeometry(0.30,0.11,8,16),lamb(0xffd93b));scarf.rotation.x=Math.PI/2.2;scarf.position.y=1.62;rider.add(scarf);
   var board=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.09,1.85),lamb(0xff5da2));board.position.y=0.30;
   var stripe=new THREE.Mesh(new THREE.BoxGeometry(0.57,0.03,0.5),lamb(0xffd93b));stripe.position.y=0.35;
-  player.add(board);player.add(stripe);player.add(rider);
+  rider.rotation.y=Math.PI;player.add(board);player.add(stripe);player.add(rider);
 })();
 scene.add(player);
 var sprayN=60,sprayGeo=new THREE.BufferGeometry(),sprayPos=new Float32Array(sprayN*3),sprayVel=[];
@@ -288,7 +288,7 @@ function reset(){
   px=0;py=0;vy=0;vx=0;airborne=false;grinding=null;trickT=-1;stumbleT=0;
   speed=baseSpeed=14;dist=0;score=0;stars=0;combo=1;boost=0;boostT=0;zone=0;zoneBlend=0;
   nextObsZ=-60;nextScenZ=-20;dead=false;
-  player.rotation.set(0,0,0);rider.rotation.set(0,0,0);rider.position.y=0;
+  player.rotation.set(0,0,0);rider.rotation.set(0,Math.PI,0);rider.position.y=0;
   paintSky(ZONES[0].sky[0],ZONES[0].sky[1],ZONES[0].sky[2]);scene.fog.color.set(ZONES[0].fog);
   updateHUD();
 }
@@ -447,16 +447,16 @@ function loop(){
           combo=Math.min(5,combo+1);
           if(boost>=100){boostT=4.2;sfx('boost');popMsg('🚀 TURBO!','#ff9f1c');}
         }else{sfx('land');puff(px,0.2,0,6,2);}
-        trickT=-1;rider.rotation.set(0,0,0);rider.position.y=0;
+        trickT=-1;rider.rotation.set(0,Math.PI,0);rider.position.y=0;
       }
     }
     if(trickT>=0){
       trickT+=dt;
       var k=Math.min(1,trickT/0.5);
-      if(trickKind===0)rider.rotation.y=k*Math.PI*2;
+      if(trickKind===0)rider.rotation.y=Math.PI+k*Math.PI*2;
       else if(trickKind===1){rider.rotation.z=Math.sin(k*Math.PI)*0.9;rider.position.y=Math.sin(k*Math.PI)*0.25;}
       else rider.rotation.x=-k*Math.PI*2;
-      if(trickT>0.62){rider.rotation.set(0,0,0);rider.position.y=0;}
+      if(trickT>0.62){rider.rotation.set(0,Math.PI,0);rider.position.y=0;}
     }
     if(grinding){
       py=1.1;score+=dt*320;boost=Math.min(100,boost+dt*9);
@@ -486,7 +486,7 @@ function loop(){
         vy=10.5;airborne=true;sfx('jump');puff(px,0.3,0,10,3);
       }
       if(o.kind==='rail'&&airborne&&vy<0&&dz<4.2&&dx<0.75&&py<1.6&&!grinding){
-        grinding={x:o.x,until:dist+8/speed};trickT=-1;rider.rotation.set(0,0,0);rider.position.y=0;sfx('land');popMsg('🛷 Rail grind!','#8ee3ff');
+        grinding={x:o.x,until:dist+8/speed};trickT=-1;rider.rotation.set(0,Math.PI,0);rider.position.y=0;sfx('land');popMsg('🛷 Rail grind!','#8ee3ff');
       }
       if((o.kind==='rock'||o.kind==='pine'||o.kind==='snowman')&&dz<0.95&&dx<0.95&&py<1.2&&!grinding){
         crash();
@@ -503,9 +503,9 @@ function loop(){
     if(!airborne&&!grinding)rider.position.y=Math.abs(Math.sin(now/140))*0.05;
     updateHUD();
   }
-  var camY=4.6+py*0.55, camZ=7.6+py*0.3;
+  var camY=5.3+py*0.55, camZ=9.4+py*0.3;
   camera.position.set(px*0.55,camY,camZ);
-  camera.lookAt(px*0.8,1.4+py*0.6,-6);
+  camera.lookAt(px*0.8,1.1+py*0.6,-9);
   renderer.render(scene,camera);
 }
 loop();
