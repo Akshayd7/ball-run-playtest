@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Jelly Escape - Prototype</title>
+<title>Jelly Escape - Phone Test v2</title>
 <style>
   * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; }
   html, body {
@@ -406,14 +406,15 @@
   function launchOrb(angle) {
     if (state.shots <= 0 || state.orb || state.target.freed) return;
     const clamped = Math.max(-Math.PI + 0.28, Math.min(-0.28, angle));
-    const speed = 470;
+    const speed = 580;
     state.shots--;
     state.orb = {
       x: state.basketX,
       y: BASKET_Y - 18,
+      trail: [],
       vx: Math.cos(clamped) * speed,
       vy: Math.sin(clamped) * speed,
-      r: 11,
+      r: 15,
       hitsLeft: 3,
       dead: false
     };
@@ -441,6 +442,7 @@
     // Update Wrecking Orb
     if (state.orb) {
       const o = state.orb;
+      o.trail.push({x:o.x,y:o.y});if(o.trail.length>12)o.trail.shift();
       if (o.dead) {
         o.vy += 680 * sdt;
       }
@@ -622,6 +624,147 @@
   }
 
   // Rendering
+function drawGummy(ctx, x, y, r, color, isAnchor, hp, wobble) {
+  const t = performance.now() * 0.025;
+  const sx = 1 + Math.sin(t) * wobble * 0.22;
+  const sy = 1 / sx;
+  const wx = Math.cos(t) * wobble * 2.5;
+
+  ctx.save();
+  ctx.translate(x + wx, y);
+  ctx.scale(sx, sy);
+
+  // 1. Gold Ceiling Mount & Crown Brackets for Support Anchors
+  if (isAnchor) {
+    ctx.fillStyle = '#ffb300';
+    ctx.strokeStyle = '#fff8e1';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(-r * 0.65, -r - 6, r * 1.3, 9, 4);
+    ctx.fill();
+    ctx.stroke();
+
+    // Rivets
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(-r * 0.35, -r - 2, 1.8, 0, Math.PI * 2);
+    ctx.arc(r * 0.35, -r - 2, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 2. Drop Shadow & Base Squishy Gumdrop Silhouette
+  ctx.fillStyle = 'rgba(18, 5, 32, 0.45)';
+  ctx.beginPath();
+  ctx.arc(0, 3.5, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Base Body with Inner Subsurface Glow
+  const grad = ctx.createRadialGradient(-r * 0.28, -r * 0.32, r * 0.1, 0, 0, r * 1.05);
+  grad.addColorStop(0, '#ffffff');
+  grad.addColorStop(0.22, color);
+  grad.addColorStop(0.85, color);
+  grad.addColorStop(1, '#2a0845');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 3. Rimlight & Tough Armor / Anchor Framing
+  ctx.lineWidth = isAnchor ? 3.2 : (hp > 1 ? 3 : 1.5);
+  ctx.strokeStyle = isAnchor ? '#ffe57f' : (hp > 1 ? '#ffd54f' : 'rgba(255,255,255,0.45)');
+  ctx.stroke();
+
+  // Bottom translucent jelly rimlight
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, 0, r - 2.2, 0.25 * Math.PI, 0.75 * Math.PI);
+  ctx.stroke();
+
+  // Top-left glossy candy specular highlight
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.68)';
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.34, -r * 0.36, r * 0.32, r * 0.17, -0.65, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 4. Cute Candy Face (Eyes, Cheeks, Expression)
+  ctx.fillStyle = 'rgba(255, 64, 129, 0.45)';
+  ctx.beginPath();
+  ctx.arc(-r * 0.42, r * 0.12, 2.6, 0, Math.PI * 2);
+  ctx.arc(r * 0.42, r * 0.12, 2.6, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#230838';
+  ctx.beginPath();
+  ctx.arc(-r * 0.28, -r * 0.04, 2.3, 0, Math.PI * 2);
+  ctx.arc(r * 0.28, -r * 0.04, 2.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eye sparkles
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(-r * 0.33, -r * 0.1, 0.9, 0, Math.PI * 2);
+  ctx.arc(r * 0.23, -r * 0.1, 0.9, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Mouth (wobble surprised 'o' vs calm gummy smile)
+  ctx.strokeStyle = '#230838';
+  ctx.lineWidth = 1.8;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (wobble > 0.2) {
+    ctx.arc(0, r * 0.2, 2.5, 0, Math.PI * 2);
+  } else {
+    ctx.arc(0, r * 0.1, 3.2, 0.15 * Math.PI, 0.85 * Math.PI);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawOrb(ctx, x, y, r, hits, dead) {
+  ctx.save();
+  // 1. Directional Comet After-Image Trail (uses state.orb velocity if in flight)
+  if (!dead && typeof state !== 'undefined' && state.orb) {
+    const vx = state.orb.vx || 0, vy = state.orb.vy || 0;
+    for (let i = 1; i <= 3; i++) {
+      ctx.fillStyle = `rgba(0, 229, 255, ${0.26 - i * 0.07})`;
+      ctx.beginPath();
+      ctx.arc(x - vx * i * 0.011, y - vy * i * 0.011, r * (1 - i * 0.17), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // 2. Metallic / Energy Wrecking-Orb Shell (Distinct from soft green Royal Jelly)
+  ctx.translate(x, y);
+  const g = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(0.35, dead ? '#90a4ae' : '#18ffff');
+  g.addColorStop(0.8, dead ? '#455a64' : '#00838f');
+  g.addColorStop(1, '#00263a');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Outer energy ring + specular shine
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = dead ? '#cfd8dc' : '#e0f7fa';
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.32, -r * 0.34, r * 0.28, r * 0.14, -0.6, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 3. Crisp Hit-Counter Badge
+  ctx.fillStyle = '#001926';
+  ctx.font = `900 ${Math.round(r * 0.85)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(hits, 0, 1);
+  ctx.restore();
+}
+
   function draw() {
     ctx.clearRect(0, 0, LW, LH);
 
@@ -633,13 +776,14 @@
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, LW, LH);
 
+    ctx.save();ctx.globalAlpha=.20;let cave=ctx.createRadialGradient(LW/2,180,20,LW/2,180,LW*.6);cave.addColorStop(0,'#ffbc6e');cave.addColorStop(.55,'#874e9e');cave.addColorStop(1,'#2b123c');ctx.fillStyle=cave;ctx.beginPath();ctx.ellipse(LW/2,195,LW*.42,Math.min(205,LH*.32),0,0,Math.PI*2);ctx.fill();ctx.restore();
     // Layered rock shelves, sugar crystals and drifting amber motes.
     for(let side=0;side<2;side++){
       ctx.save(); if(side){ctx.translate(LW,0);ctx.scale(-1,1);}
       for(let i=0;i<5;i++){
         let y=145+i*(LH-210)/5;
         ctx.fillStyle=i%2?'#37194d':'#44215f';ctx.beginPath();ctx.moveTo(0,y-40);ctx.lineTo(24,y-28);ctx.lineTo(40,y+12);ctx.lineTo(18,y+45);ctx.lineTo(0,y+60);ctx.fill();
-        ctx.fillStyle=i%2?'#a45cda':'#58d9c6';ctx.globalAlpha=.5;ctx.beginPath();ctx.moveTo(15,y);ctx.lineTo(22,y-27);ctx.lineTo(30,y-4);ctx.lineTo(25,y+14);ctx.closePath();ctx.fill();ctx.globalAlpha=1;
+        ctx.save();ctx.shadowColor=i%2?'#b681ff':'#58efd7';ctx.shadowBlur=8;ctx.fillStyle=i%2?'#a778d9':'#58d9c6';ctx.globalAlpha=.85;ctx.beginPath();ctx.moveTo(15,y);ctx.lineTo(22,y-27);ctx.lineTo(30,y-4);ctx.lineTo(25,y+14);ctx.closePath();ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#e2fff0';ctx.globalAlpha=.65;ctx.beginPath();ctx.moveTo(22,y-27);ctx.lineTo(23,y+4);ctx.lineTo(15,y);ctx.fill();ctx.restore();
       }ctx.restore();
     }
     for(let i=0;i<24;i++){
@@ -671,7 +815,7 @@
 
     // 3. Draw Sticky Gummy Web Connections
     const DIST_THRESH = 49;
-    ctx.lineWidth = 7;
+    ctx.lineWidth = 6;
     ctx.lineCap = 'round';
     for (let i = 0; i < state.nodes.length; i++) {
       const a = state.nodes[i];
@@ -723,47 +867,9 @@
       ctx.restore();
     }
 
-    // 5. Draw Connected Gummy Nodes
-    for (const n of state.nodes) {
-      const wob = Math.sin(performance.now() * 0.03) * n.wobble * 3.5;
-      ctx.save();
-      ctx.translate(n.x + wob, n.y);
-      ctx.fillStyle = n.color;
-      ctx.beginPath();
-      ctx.arc(0, 0, n.r, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Glossy highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.38)';
-      ctx.beginPath();
-      ctx.arc(-5, -5, n.r * 0.36, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Anchor / Tough Armor ring
-      if (n.anchor) {
-        ctx.strokeStyle = '#fff8e1';
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-      } else if (n.maxHp > 1 && n.hp === 2) {
-        ctx.strokeStyle = '#ffe082';
-        ctx.lineWidth = 3;
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    // 6. Draw Falling Disconnected Blobs
-    for (const f of state.falling) {
-      ctx.save();
-      ctx.translate(f.x, f.y);
-      ctx.rotate(f.rot);
-      ctx.globalAlpha = 0.85;
-      ctx.fillStyle = f.color;
-      ctx.beginPath();
-      ctx.arc(0, 0, f.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
+    // Shaded gummy characters and gold support mounts
+    for(const n of state.nodes) drawGummy(ctx,n.x,n.y,n.r,n.color,n.anchor,n.hp,n.wobble);
+    for(const f of state.falling){ctx.save();ctx.translate(f.x,f.y);ctx.rotate(f.rot);drawGummy(ctx,0,0,f.r,f.color,false,1,.5);ctx.restore();}
 
     // 7. Draw Royal Jelly Target (Expressive Stretchy Character with Crown)
     const t = state.target;
@@ -779,7 +885,7 @@
       ctx.shadowBlur = t.freed ? 18 : 10;
 
       // Jelly body
-      ctx.fillStyle = '#00e676';
+      const jellyGrad=ctx.createRadialGradient(-7,-9,2,0,0,t.r*1.2);jellyGrad.addColorStop(0,'#b9ffe0');jellyGrad.addColorStop(.4,'#24efaa');jellyGrad.addColorStop(1,'#008e73');ctx.fillStyle = jellyGrad;
       ctx.beginPath();
       ctx.arc(0, 0, t.r, 0, Math.PI * 2);
       ctx.fill();
@@ -839,28 +945,10 @@
 
     // 8. Draw Wrecking Orb
     const orbToDraw = state.orb || (state.phase === 'aim' && !t.freed && state.shots > 0
-      ? { x: state.basketX, y: BASKET_Y - 18, r: 11, hitsLeft: 3, dead: false }
+      ? { x: state.basketX, y: BASKET_Y - 18, r: 15, hitsLeft: 3, dead: false }
       : null);
 
-    if (orbToDraw) {
-      ctx.save();
-      ctx.translate(orbToDraw.x, orbToDraw.y);
-      ctx.fillStyle = orbToDraw.dead ? '#78909c' : '#00e5ff';
-      ctx.beginPath();
-      ctx.arc(0, 0, orbToDraw.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-
-      // Remaining hit pips on orb
-      ctx.fillStyle = '#1a0b2e';
-      ctx.font = '900 11px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(orbToDraw.hitsLeft, 0, 1);
-      ctx.restore();
-    }
+    if(orbToDraw) drawOrb(ctx,orbToDraw.x,orbToDraw.y,orbToDraw.r,orbToDraw.hitsLeft,orbToDraw.dead);
 
     // 9. Draw Catcher Basket at bottom
     ctx.save();
@@ -881,7 +969,7 @@
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = '#e65100';
+    const weave=ctx.createLinearGradient(0,0,0,BASKET_H);weave.addColorStop(0,'#ffb338');weave.addColorStop(.5,'#d96b16');weave.addColorStop(1,'#874316');ctx.fillStyle = weave;
     ctx.beginPath();
     ctx.moveTo(-BASKET_W / 2 + 5, 4);
     ctx.lineTo(BASKET_W / 2 - 5, 4);
@@ -891,6 +979,8 @@
     ctx.fill();
     ctx.stroke();
 
+    ctx.save();ctx.beginPath();ctx.rect(-BASKET_W/2+14,5,BASKET_W-28,BASKET_H-6);ctx.clip();ctx.strokeStyle='rgba(255,225,158,.45)';ctx.lineWidth=2;
+    for(let x=-60;x<65;x+=11){ctx.beginPath();ctx.moveTo(x,2);ctx.lineTo(x+15,32);ctx.stroke();ctx.beginPath();ctx.moveTo(x,2);ctx.lineTo(x-15,32);ctx.stroke();}ctx.restore();
     // Soft cushion inside basket
     ctx.fillStyle = '#ff4081';
     ctx.beginPath();
