@@ -15,7 +15,7 @@
 <div id="game-container"><canvas id="game"></canvas></div>
 <script>
 "use strict";
-/* JELLY BRICK BASH v2 - original kids cartoon brick-breaker. Single file, no external assets. */
+/* JELLY BRICK BASH v4 - original kids cartoon brick-breaker. Single file, no external assets. */
 var W = 800, H = 450, IS_PORTRAIT = false;
 var canvas = document.getElementById("game");
 var ctx = canvas.getContext("2d");
@@ -24,7 +24,7 @@ var DPR = Math.min(window.devicePixelRatio || 1, 2);
 function resize() {
   var cw = window.innerWidth, ch = window.innerHeight;
   var portrait = ch > cw;
-  if (portrait !== IS_PORTRAIT) {
+  if (portrait !== IS_PORTRAIT || (portrait && H !== Math.max(700, Math.min(1000, Math.round(ch / (cw / 460)))))) {
     IS_PORTRAIT = portrait;
     if (portrait) {
       W = 460;
@@ -57,7 +57,7 @@ function relayout() {
   paddle.y = IS_PORTRAIT ? H - 70 : H - 34;
   paddle.x = Math.max(paddle.w/2 + 6, Math.min(W - paddle.w/2 - 6, paddle.x));
   balls.forEach(function(b){
-    if (b.stuck) { b.x = paddle.x; b.y = paddle.y - 14; }
+    if (b.stuck) { b.x = paddle.x; b.y = paddle.y - 22; }
     else { b.x = Math.max(12, Math.min(W-12, b.x)); b.y = Math.max(12, Math.min(H-40, b.y)); }
   });
   powerups.forEach(function(p){ p.x = Math.max(12, Math.min(W-12, p.x)); });
@@ -136,7 +136,7 @@ try { totalStars = parseInt(localStorage.getItem("jbb_stars") || "0", 10) || 0; 
 function saveBest() { try { localStorage.setItem("jbb_best", String(best)); } catch (e) {} }
 function saveStars() { try { localStorage.setItem("jbb_stars", String(totalStars)); } catch (e) {} }
 
-var paddle = { x: W/2, y: H-34, w: 96, h: 16, baseW: 96, wobble: 0, wide: 0, vx: 0 };
+var paddle = { x: W/2, y: IS_PORTRAIT ? H-70 : H-34, w: 112, h: 18, baseW: 112, wobble: 0, wide: 0, vx: 0 };
 var balls = [];
 var bricks = [];
 var powerups = [];
@@ -158,7 +158,7 @@ var BRICK_COLORS = [
 var BRICK_HP2 = { top:"#9aa7ff", bot:"#4f46e5" };
 
 function levelRows(l) { return Math.min(4 + Math.ceil(l/2), IS_PORTRAIT ? 8 : 7); }
-function ballSpeed(l) { return Math.min(265 + (l-1)*22, 430); }
+function ballSpeed(l) { return Math.min(340 + (l-1)*24, 510); }
 function brickValue(b) {
   if (b.kind === "star") return 50;
   if (b.kind === "gem") return 30;
@@ -192,7 +192,7 @@ function buildLevel(l) {
   if (bricks.length === 0) bricks.push({ x: W/2-37, y: 100, w: 74, h: 26, hp: 1, maxhp: 1, kind: "", color: BRICK_COLORS[0], wob: 0, alive: true });
 }
 function resetBall(stuck) {
-  balls = [{ x: paddle.x, y: paddle.y - 14, r: 8, vx: 0, vy: 0, stuck: !!stuck, spin: 0, trail: [] }];
+  balls = [{ x: paddle.x, y: paddle.y - 22, r: 13, vx: 0, vy: 0, stuck: !!stuck, spin: 0, trail: [] }];
 }
 function launchBall(b, angJitter) {
   var a = -Math.PI/2 + (Math.random()*0.5 - 0.25) + (angJitter || 0);
@@ -252,7 +252,7 @@ function applyPower(k) {
     var src = balls.filter(function(b){ return !b.stuck; })[0] || balls[0];
     if (src && balls.length < 4) {
       [-0.5, 0.5].forEach(function (j) {
-        var nb = { x: src.x, y: src.y, r: 8, vx: 0, vy: 0, stuck: false, spin: 0, trail: [] };
+        var nb = { x: src.x, y: src.y, r: 13, vx: 0, vy: 0, stuck: false, spin: 0, trail: [] };
         var sp = Math.hypot(src.vx, src.vy) || ballSpeed(level);
         var a = Math.atan2(src.vy, src.vx) + j;
         nb.vx = Math.cos(a)*sp; nb.vy = Math.sin(a)*sp;
@@ -316,7 +316,13 @@ function tryFullscreen() {
     if (el.requestFullscreen) { var p = el.requestFullscreen({ navigationUI: "hide" }); if (p && p.catch) p.catch(function(){}); }
   } catch (e) {}
 }
-function onMove(clientX) { pointerX = toGameX(clientX); }
+function onMove(clientX) {
+  pointerX = Math.max(paddle.w/2+6, Math.min(W-paddle.w/2-6, toGameX(clientX)));
+  if (state === STATE.PLAY) {
+    paddle.x = pointerX; paddle.vx = 0;
+    balls.forEach(function(b){ if(b.stuck){b.x=paddle.x;b.y=paddle.y-b.r-9;} });
+  }
+}
 function onTap(x, y) {
   try { audioInit(); if (AC && AC.state === "suspended") AC.resume(); } catch (e) {}
   tryFullscreen();
@@ -326,13 +332,14 @@ function onTap(x, y) {
   var dx = gx - (W-30), dy = gy - 30;
   var mr = IS_PORTRAIT ? 30 : 20;
   if (dx*dx + dy*dy <= mr*mr) { setMuted(!muted); return; }
-  if (state === STATE.START) { newGame(); return; }
+  if (state === STATE.START) { newGame(); onMove(x); return; }
   if (state === STATE.OVER || state === STATE.CLEAR) {
     if (state === STATE.OVER) maybeInterstitial(function(){ state = STATE.START; });
     else nextLevel();
     return;
   }
   if (state === STATE.PLAY) {
+    onMove(x);
     balls.forEach(function (b) { if (b.stuck) launchBall(b); });
   }
 }
@@ -365,13 +372,12 @@ function update(dt) {
   if (state === STATE.PAUSE) return;
   if (state !== STATE.PLAY) return;
 
-  // paddle: spring toward finger with momentum (buttery feel)
+  // Direct finger tracking: no spring lag or overshoot on direction changes.
   var desired = 0;
-  if (keys["ArrowLeft"] || keys["a"] || keys["A"]) desired = -620;
-  else if (keys["ArrowRight"] || keys["d"] || keys["D"]) desired = 620;
-  else if (pointerX !== null) desired = Math.max(-980, Math.min(980, (pointerX - paddle.x) * 15));
-  paddle.vx += (desired - paddle.vx) * Math.min(1, dt*14);
-  paddle.x += paddle.vx * dt;
+  if (keys["ArrowLeft"] || keys["a"] || keys["A"]) desired = -720;
+  else if (keys["ArrowRight"] || keys["d"] || keys["D"]) desired = 720;
+  if (desired) { paddle.vx = desired; paddle.x += desired*dt; pointerX = null; }
+  else { paddle.vx = 0; if(pointerX !== null) paddle.x = pointerX; }
   paddle.x = Math.max(paddle.w/2 + 6, Math.min(W - paddle.w/2 - 6, paddle.x));
   if (paddle.wide > 0) { paddle.wide -= dt; if (paddle.wide <= 0) paddle.w = paddle.baseW; }
   if (scoreMultT > 0) { scoreMultT -= dt; if (scoreMultT <= 0) scoreMult = 1; }
@@ -379,7 +385,7 @@ function update(dt) {
 
   for (var bi = balls.length - 1; bi >= 0; bi--) {
     var b = balls[bi];
-    if (b.stuck) { b.x = paddle.x; b.y = paddle.y - 14; continue; }
+    if (b.stuck) { b.x = paddle.x; b.y = paddle.y - 22; continue; }
     b.x += b.vx * dt; b.y += b.vy * dt; b.spin += dt * 6;
     b.trail.push({ x: b.x, y: b.y });
     if (b.trail.length > 7) b.trail.shift();
@@ -966,7 +972,8 @@ var last = performance.now();
 function frame(now) {
   var dt = Math.min((now - last) / 1000, 0.033);
   last = now;
-  update(dt);
+  var steps = Math.max(1, Math.ceil(dt / (1/240)));
+  for(var sub=0;sub<steps;sub++) update(dt/steps);
   draw();
   requestAnimationFrame(frame);
 }
