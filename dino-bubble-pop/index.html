@@ -42,7 +42,7 @@ var best=0;try{best=parseInt(localStorage.getItem('dbp_best')||'0',10)||0;}catch
 function saveBest(){try{localStorage.setItem('dbp_best',''+best);}catch(e){}}
 
 // ---------- game constants ----------
-var COLS=8,BR=24,ROWH=Math.round(BR*1.74),GRID_X=Math.round((W-COLS*2*BR)/2)+BR,GRID_Y=86;
+var COLS=8,BR=24,ROWH=Math.round(BR*1.74),GRID_X=Math.round((W-COLS*2*BR)/2)+BR,GRID_Y=102;
 var COLORS=[
  {a:'#ff5d8f',b:'#ff9ebd',c:'#d63d6e'}, // pink
  {a:'#ffa53d',b:'#ffd08a',c:'#e07f16'}, // orange
