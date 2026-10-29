@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Jelly Escape - Phone Test v2</title>
+<title>Jelly Escape - Phone Test v3</title>
 <style>
   * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; }
   html, body {
@@ -139,57 +139,22 @@
     try {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+      ensureMaster();syncSound();
     } catch(e){}
   }
 
-  function sfx(type) {
-    if (muted || !audioCtx) return;
-    try {
-      const now = audioCtx.currentTime;
-      const osc = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      osc.connect(g); g.connect(audioCtx.destination);
-      if (type === 'launch') {
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(190, now);
-        osc.frequency.exponentialRampToValueAtTime(520, now + 0.14);
-        g.gain.setValueAtTime(0.18, now);
-        g.gain.linearRampToValueAtTime(0.01, now + 0.15);
-        osc.start(now); osc.stop(now + 0.15);
-      } else if (type === 'pop') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(320 + Math.random()*180, now);
-        osc.frequency.exponentialRampToValueAtTime(680, now + 0.11);
-        g.gain.setValueAtTime(0.22, now);
-        g.gain.linearRampToValueAtTime(0.01, now + 0.12);
-        osc.start(now); osc.stop(now + 0.12);
-      } else if (type === 'free') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(400, now);
-        osc.frequency.exponentialRampToValueAtTime(880, now + 0.32);
-        g.gain.setValueAtTime(0.25, now);
-        g.gain.linearRampToValueAtTime(0.01, now + 0.35);
-        osc.start(now); osc.stop(now + 0.35);
-      } else if (type === 'win') {
-        [523, 659, 784, 1046].forEach((freq, idx) => {
-          const o = audioCtx.createOscillator();
-          const gn = audioCtx.createGain();
-          o.type = 'triangle';
-          o.connect(gn); gn.connect(audioCtx.destination);
-          o.frequency.setValueAtTime(freq, now + idx*0.07);
-          gn.gain.setValueAtTime(0.2, now + idx*0.07);
-          gn.gain.linearRampToValueAtTime(0.005, now + idx*0.07 + 0.22);
-          o.start(now + idx*0.07); o.stop(now + idx*0.07 + 0.23);
-        });
-      } else if (type === 'miss') {
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(240, now);
-        osc.frequency.linearRampToValueAtTime(110, now + 0.3);
-        g.gain.setValueAtTime(0.14, now);
-        g.gain.linearRampToValueAtTime(0.01, now + 0.32);
-        osc.start(now); osc.stop(now + 0.32);
-      }
-    } catch(e){}
+  let master=null, musicAt=0, musicNote=0;
+  function ensureMaster(){
+    if(!audioCtx)return;
+    if(!master){master=audioCtx.createGain();master.gain.value=muted?0:1;master.connect(audioCtx.destination);}
+  }
+  function syncSound(){ensureMaster();if(master)master.gain.setTargetAtTime(muted?0:1,audioCtx.currentTime,.025);}
+  function sfx(type){if(muted||!audioCtx)return;ensureMaster();try{playCuteSound({currentTime:audioCtx.currentTime,createOscillator:()=>audioCtx.createOscillator(),createGain:()=>audioCtx.createGain(),destination:master},type,.16);}catch(e){}}
+  function musicTick(){
+    if(muted||!audioCtx||document.hidden||!['aim','flight'].includes(state.phase))return;ensureMaster();
+    const now=audioCtx.currentTime;if(now<musicAt)return;musicAt=now+.55;
+    const melody=[523.25,659.25,783.99,659.25,587.33,659.25,523.25,392];
+    try{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='sine';o.frequency.value=melody[musicNote++%8];g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.025,now+.015);g.gain.exponentialRampToValueAtTime(.0001,now+.43);o.connect(g);g.connect(master);o.start(now);o.stop(now+.45);o.onended=()=>{o.disconnect();g.disconnect();};}catch(e){}
   }
 
   // Level Definitions
@@ -696,15 +661,15 @@ function drawGummy(ctx, x, y, r, color, isAnchor, hp, wobble) {
 
   ctx.fillStyle = '#230838';
   ctx.beginPath();
-  ctx.arc(-r * 0.28, -r * 0.04, 2.3, 0, Math.PI * 2);
-  ctx.arc(r * 0.28, -r * 0.04, 2.3, 0, Math.PI * 2);
+  ctx.arc(-r * 0.28, -r * 0.04, 3.1, 0, Math.PI * 2);
+  ctx.arc(r * 0.28, -r * 0.04, 3.1, 0, Math.PI * 2);
   ctx.fill();
 
   // Eye sparkles
   ctx.fillStyle = '#ffffff';
   ctx.beginPath();
-  ctx.arc(-r * 0.33, -r * 0.1, 0.9, 0, Math.PI * 2);
-  ctx.arc(r * 0.23, -r * 0.1, 0.9, 0, Math.PI * 2);
+  ctx.arc(-r * 0.33, -r * 0.1, 1.1, 0, Math.PI * 2);
+  ctx.arc(r * 0.23, -r * 0.1, 1.1, 0, Math.PI * 2);
   ctx.fill();
 
   // Mouth (wobble surprised 'o' vs calm gummy smile)
@@ -763,6 +728,197 @@ function drawOrb(ctx, x, y, r, hits, dead) {
   ctx.textBaseline = 'middle';
   ctx.fillText(hits, 0, 1);
   ctx.restore();
+}
+
+function drawRoyalJelly(ctx, x, y, r, emotion, squash = 1, time = performance.now() * 0.001) {
+  ctx.save();
+  ctx.translate(x, y);
+  const breathe = emotion === 'waiting' ? Math.sin(time * 3.5) * 0.04 : 0;
+  const sy = squash + breathe;
+  const sx = 1 / Math.sqrt(Math.max(0.5, sy));
+  ctx.scale(sx, sy);
+
+  // 1. Soft Ambient Glow & Little Stubby Feet
+  ctx.shadowColor = '#69f0ae';
+  ctx.shadowBlur = emotion === 'falling' ? 18 : 10;
+  ctx.fillStyle = '#00c853';
+  const footBob = emotion === 'falling' ? Math.sin(time * 18) * 2.5 : 0;
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.45, r * 0.82 + footBob, r * 0.24, r * 0.16, 0.2, 0, Math.PI * 2);
+  ctx.ellipse(r * 0.45, r * 0.82 - footBob, r * 0.24, r * 0.16, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // 2. Chubby Pear-Shaped Plush Body
+  const grad = ctx.createRadialGradient(-r * 0.25, -r * 0.35, r * 0.1, 0, r * 0.1, r * 1.25);
+  grad.addColorStop(0, '#e8f5e9');
+  grad.addColorStop(0.28, '#69f0ae');
+  grad.addColorStop(0.82, '#00e676');
+  grad.addColorStop(1, '#008c3a');
+  ctx.fillStyle = grad;
+
+  ctx.beginPath();
+  ctx.moveTo(0, -r * 0.96);
+  ctx.bezierCurveTo(r * 0.72, -r * 0.96, r * 1.16, -r * 0.2, r * 1.06, r * 0.42);
+  ctx.bezierCurveTo(r * 0.98, r * 0.92, r * 0.5, r * 0.98, 0, r * 0.98);
+  ctx.bezierCurveTo(-r * 0.5, r * 0.98, -r * 0.98, r * 0.92, -r * 1.06, r * 0.42);
+  ctx.bezierCurveTo(-r * 1.16, -r * 0.2, -r * 0.72, -r * 0.96, 0, -r * 0.96);
+  ctx.closePath();
+  ctx.fill();
+
+  // Inner Jelly Rimlight & Top Gloss
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.34, -r * 0.52, r * 0.28, r * 0.14, -0.45, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 3. Tiny Expressive Side Paws
+  const pawY = emotion === 'falling' ? -r * 0.28 : (emotion === 'caught' ? -r * 0.15 : r * 0.12);
+  const pawAng = emotion === 'falling' ? 0.65 : 0.3;
+  ctx.fillStyle = '#69f0ae';
+  ctx.strokeStyle = '#009624';
+  ctx.lineWidth = 1.4;
+  [-1, 1].forEach(dir => {
+    ctx.beginPath();
+    ctx.ellipse(dir * r * 0.95, pawY, r * 0.22, r * 0.15, dir * -pawAng, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+
+  // 4. Rosy Plush Cheeks
+  ctx.fillStyle = 'rgba(255, 105, 155, 0.58)';
+  ctx.beginPath();
+  ctx.ellipse(-r * 0.48, r * 0.18, r * 0.19, r * 0.12, 0, 0, Math.PI * 2);
+  ctx.ellipse(r * 0.48, r * 0.18, r * 0.19, r * 0.12, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 5. Large Dark Expressive Eyes with Periodic Blink & Layered Sparkles
+  const isBlinking = emotion === 'waiting' && (time % 3.8 > 3.64);
+  [-1, 1].forEach(dir => {
+    const ex = dir * r * 0.34, ey = -r * 0.02;
+    if (isBlinking || emotion === 'caught') {
+      ctx.strokeStyle = '#1a092b';
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(ex, ey + 2, r * 0.16, Math.PI * 1.15, Math.PI * 1.85);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#160626';
+      ctx.beginPath();
+      ctx.ellipse(ex, ey, r * 0.19, r * 0.22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Main top-left sparkle + bottom-right secondary glint
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(ex - r * 0.06, ey - r * 0.07, r * 0.08, 0, Math.PI * 2);
+      ctx.arc(ex + r * 0.06, ey + r * 0.08, r * 0.038, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+
+  // 6. Cute Little Mouth
+  ctx.strokeStyle = '#160626';
+  ctx.fillStyle = '#ff5252';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (emotion === 'falling') {
+    ctx.ellipse(0, r * 0.16, r * 0.11, r * 0.14, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  } else if (emotion === 'caught') {
+    ctx.arc(0, r * 0.1, r * 0.18, 0, Math.PI);
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    ctx.arc(-r * 0.06, r * 0.12, r * 0.07, 0.15 * Math.PI, 0.88 * Math.PI);
+    ctx.arc(r * 0.06, r * 0.12, r * 0.07, 0.12 * Math.PI, 0.85 * Math.PI);
+    ctx.stroke();
+  }
+
+  // 7. Tiny Tilted Royal Crown
+  ctx.save();
+  ctx.translate(0, -r * 0.94);
+  ctx.rotate(Math.sin(time * 2.5) * 0.06);
+  ctx.fillStyle = '#ffd740';
+  ctx.strokeStyle = '#ff8f00';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.36, 2);
+  ctx.lineTo(-r * 0.44, -r * 0.38);
+  ctx.lineTo(-r * 0.16, -r * 0.16);
+  ctx.lineTo(0, -r * 0.46);
+  ctx.lineTo(r * 0.16, -r * 0.16);
+  ctx.lineTo(r * 0.44, -r * 0.38);
+  ctx.lineTo(r * 0.36, 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+  ctx.restore();
+}
+
+function playCuteSound(audioCtx, type, volume = 0.22) {
+  if (!audioCtx) return;
+  try {
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(()=>{});
+    const now = audioCtx.currentTime;
+    const vol = Math.max(0.001, Math.min(1, volume));
+
+    const tone = (freq, endFreq, start, dur, wave = 'sine', gainScale = 1, lfoHz = 0) => {
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      osc.type = wave;
+      osc.frequency.setValueAtTime(freq, start);
+      if (endFreq && endFreq !== freq) {
+        osc.frequency.exponentialRampToValueAtTime(endFreq, start + dur);
+      }
+      if (lfoHz > 0) {
+        const lfo = audioCtx.createOscillator();
+        const lfoGain = audioCtx.createGain();
+        lfo.frequency.value = lfoHz;
+        lfoGain.gain.value = 18;
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+        lfo.start(start);
+        lfo.stop(start + dur);
+        lfo.onended=()=>{lfo.disconnect();lfoGain.disconnect();};
+      }
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.linearRampToValueAtTime(vol * gainScale, start + Math.min(0.015, dur * 0.25));
+      g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+      osc.connect(g);
+      g.connect(audioCtx.destination);
+      osc.start(start);
+      osc.stop(start + dur + 0.01);
+      osc.onended=()=>{osc.disconnect();g.disconnect();};
+    };
+
+    if (type === 'launch') {
+      tone(280, 620, now, 0.13, 'sine', 0.9);
+      tone(420, 880, now + 0.02, 0.11, 'triangle', 0.45);
+    } else if (type === 'pop') {
+      const base = 460 + Math.random() * 140;
+      tone(base, base * 1.65, now, 0.09, 'sine', 0.95);
+    } else if (type === 'free') {
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+        tone(f, f * 1.03, now + i * 0.055, 0.18, 'sine', 0.8);
+      });
+    } else if (type === 'win') {
+      [523.25, 659.25, 783.99, 987.77, 1046.5].forEach((f, i) => {
+        tone(f, f, now + i * 0.065, 0.24, 'triangle', 0.75);
+        tone(f * 2, f * 2, now + i * 0.065, 0.18, 'sine', 0.3);
+      });
+    } else if (type === 'miss') {
+      // Friendly soft low-volume wobble (no harsh sawtooth)
+      tone(310, 195, now, 0.34, 'sine', 0.55, 11);
+      tone(220, 155, now + 0.04, 0.3, 'triangle', 0.35, 11);
+    }
+  } catch (e) {}
 }
 
   function draw() {
@@ -871,77 +1027,8 @@ function drawOrb(ctx, x, y, r, hits, dead) {
     for(const n of state.nodes) drawGummy(ctx,n.x,n.y,n.r,n.color,n.anchor,n.hp,n.wobble);
     for(const f of state.falling){ctx.save();ctx.translate(f.x,f.y);ctx.rotate(f.rot);drawGummy(ctx,0,0,f.r,f.color,false,1,.5);ctx.restore();}
 
-    // 7. Draw Royal Jelly Target (Expressive Stretchy Character with Crown)
-    const t = state.target;
-    if (!t.missed) {
-      ctx.save();
-      ctx.translate(t.x, t.y);
-      const sx = 1 / Math.sqrt(t.squash);
-      const sy = t.squash;
-      ctx.scale(sx, sy);
-
-      // Outer glow
-      ctx.shadowColor = '#00e676';
-      ctx.shadowBlur = t.freed ? 18 : 10;
-
-      // Jelly body
-      const jellyGrad=ctx.createRadialGradient(-7,-9,2,0,0,t.r*1.2);jellyGrad.addColorStop(0,'#b9ffe0');jellyGrad.addColorStop(.4,'#24efaa');jellyGrad.addColorStop(1,'#008e73');ctx.fillStyle = jellyGrad;
-      ctx.beginPath();
-      ctx.arc(0, 0, t.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-
-      // Gloss
-      ctx.fillStyle = 'rgba(255,255,255,0.45)';
-      ctx.beginPath();
-      ctx.ellipse(-6, -7, 6, 4, -0.4, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Golden Crown
-      ctx.fillStyle = '#ffd600';
-      ctx.strokeStyle = '#ff6f00';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(-11, -t.r + 3);
-      ctx.lineTo(-14, -t.r - 9);
-      ctx.lineTo(-5, -t.r - 3);
-      ctx.lineTo(0, -t.r - 11);
-      ctx.lineTo(5, -t.r - 3);
-      ctx.lineTo(14, -t.r - 9);
-      ctx.lineTo(11, -t.r + 3);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Expressive Eyes & Mouth
-      ctx.fillStyle = '#1b092b';
-      ctx.beginPath();
-      ctx.arc(-6.5, -1, 3.2, 0, Math.PI * 2);
-      ctx.arc(6.5, -1, 3.2, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.arc(-7.5, -2, 1.2, 0, Math.PI * 2);
-      ctx.arc(5.5, -2, 1.2, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = '#1b092b';
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      if (t.caught) {
-        // Big happy smile
-        ctx.arc(0, 3, 6, 0, Math.PI);
-      } else if (t.freed) {
-        // Excited 'O' mouth while falling
-        ctx.arc(0, 5, 4, 0, Math.PI * 2);
-      } else {
-        // Hopeful wave
-        ctx.arc(0, 4, 4, 0.2, Math.PI - 0.2);
-      }
-      ctx.stroke();
-      ctx.restore();
-    }
+    const t=state.target;
+    if(!t.missed)drawRoyalJelly(ctx,t.x,t.y,t.r*1.12,t.caught?'caught':t.freed?'falling':'waiting',t.squash);
 
     // 8. Draw Wrecking Orb
     const orbToDraw = state.orb || (state.phase === 'aim' && !t.freed && state.shots > 0
@@ -1087,6 +1174,7 @@ function drawOrb(ctx, x, y, r, hits, dead) {
 
   muteBtn.addEventListener('click', () => {
     muted = !muted;
+    if(!muted)initAudio();syncSound();
     muteBtn.textContent = muted ? 'Muted' : 'Sound';
     try { localStorage.setItem('je_mute', muted ? '1' : '0'); } catch(e){}
   });
@@ -1109,13 +1197,15 @@ function drawOrb(ctx, x, y, r, hits, dead) {
     const dt = (now - lastTime) / 1000;
     lastTime = now;
     if (!window.__qaPaused) advancePhysics(dt);
-    draw();
+    draw();musicTick();
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);
 
   // Controlled Physics & Gameplay Test Hooks
   window.__gameTest = {
+    audio: () => ({muted,context:audioCtx?.state,master:master?.gain.value,musicNote}),
+    sound: (type) => { initAudio();sfx(type); },
     details: () => JSON.parse(JSON.stringify(state)),
     snapshot: () => ({
       level: state.levelIdx + 1,
